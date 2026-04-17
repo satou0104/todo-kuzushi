@@ -141,50 +141,42 @@ function canvasH() { return canvas.height / window.devicePixelRatio; }
 // ---- ブロック生成 ----
 // ・completedのtodoはスキップ
 // ・todoごとに1行ずつ配置（文字数に応じてブロックサイズを自動調整）
+// ・行のy座標は実際の高さを積み上げて被りを防ぐ
 function generateBlocks() {
   blocks = [];
 
-  // 基本定数（固定）
   const BASE_MINI_W = 16;
   const BASE_MINI_H = 14;
   const BASE_MINI_PAD = 2;
   const BASE_CHAR_PAD = 4;
+  const ROW_GAP = 6;
 
-  let row = 0;
+  let currentY = BLOCK_TOP; // 積み上げ方式
 
   todos.forEach((todo, todoIdx) => {
     if (!todo.text.trim() || todo.completed) return;
     const color = BLOCK_COLORS[todoIdx % BLOCK_COLORS.length];
     const charCount = [...todo.text].length;
 
-    // 1行に収まるようブロックサイズを計算
-    // 1文字グループ幅 = MINI_W*2 + MINI_PAD
-    // 必要幅 = charCount * (CHAR_GW + CHAR_PAD) + CHAR_PAD
     const availW = canvasW() - BASE_CHAR_PAD * 2;
-    // 1文字あたりの最大幅
     const maxCharW = Math.floor(availW / charCount);
-    // CHAR_GW = MINI_W*2 + MINI_PAD, CHAR_PAD = 4
-    // maxCharW = MINI_W*2 + MINI_PAD + CHAR_PAD → MINI_W = (maxCharW - MINI_PAD - CHAR_PAD) / 2
     let miniW = Math.floor((maxCharW - BASE_MINI_PAD - BASE_CHAR_PAD) / 2);
-    miniW = Math.min(miniW, BASE_MINI_W); // 基本サイズを超えない
-    miniW = Math.max(miniW, 8);           // 最小8px
+    miniW = Math.min(miniW, BASE_MINI_W);
+    miniW = Math.max(miniW, 8);
 
-    // 高さは幅に比例
-    const ratio = miniW / BASE_MINI_W;
-    const miniH = Math.max(Math.floor(BASE_MINI_H * ratio), 7);
+    const ratio   = miniW / BASE_MINI_W;
+    const miniH   = Math.max(Math.floor(BASE_MINI_H * ratio), 7);
     const miniPad = BASE_MINI_PAD;
     const charPad = BASE_CHAR_PAD;
-
-    const charGW = CHAR_COLS * miniW + (CHAR_COLS - 1) * miniPad;
-    const charGH = CHAR_ROWS * miniH + (CHAR_ROWS - 1) * miniPad;
-    const stepX  = charGW + charPad;
-    const stepY  = charGH + charPad;
+    const charGW  = CHAR_COLS * miniW + (CHAR_COLS - 1) * miniPad;
+    const charGH  = CHAR_ROWS * miniH + (CHAR_ROWS - 1) * miniPad;
+    const stepX   = charGW + charPad;
     const fontSize = Math.max(Math.floor(miniH * 1.6), 8);
 
     let col = 0;
     [...todo.text].forEach((char) => {
       const gx = charPad + col * stepX;
-      const gy = BLOCK_TOP + row * stepY;
+      const gy = currentY;
       const labelX = gx + charGW / 2;
       const labelY = gy + charGH / 2;
       const groupKey = labelX + '_' + labelY;
@@ -210,7 +202,8 @@ function generateBlocks() {
       col++;
     });
 
-    row++;
+    // 次の行のyをこの行の実際の高さ分だけ下にずらす
+    currentY += charGH + ROW_GAP;
   });
 }
 
