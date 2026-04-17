@@ -1,0 +1,307 @@
+/* ===== リセット & ベース ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --header-h: 60px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --accent: #007AFF;
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --text: #1C1C1E;
+  --sub: #8E8E93;
+  --divider: #E5E5EA;
+  --completed: #AEAEB2;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  overflow-x: hidden;
+  background: var(--bg);
+  font-family: -apple-system, 'Hiragino Sans', sans-serif;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+/* ===== ヘッダー ===== */
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-h);
+  padding: 0 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--divider);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+#app-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#toggle-label,
+#toggle-label-game {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sub);
+  transition: color 0.2s;
+}
+
+#toggle-label-game.active {
+  color: var(--accent);
+}
+
+/* ===== トグルスイッチ ===== */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 51px;
+  height: 31px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  inset: 0;
+  background: #E5E5EA;
+  border-radius: 31px;
+  transition: background 0.25s;
+  cursor: pointer;
+}
+
+.slider::before {
+  content: '';
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  left: 2px;
+  top: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.25s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.toggle-switch input:checked + .slider {
+  background: var(--accent);
+}
+
+.toggle-switch input:checked + .slider::before {
+  transform: translateX(20px);
+}
+
+/* ===== TODOモード ===== */
+#todo-mode {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+}
+
+#todo-list {
+  list-style: none;
+  background: var(--card);
+  margin: 16px 0 0;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--divider);
+  background: var(--card);
+  transition: background 0.15s;
+}
+
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+/* チェックボタン */
+.check-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--divider);
+  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, background 0.2s;
+  margin-right: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.check-btn.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.check-btn.checked::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+/* テキスト入力 */
+.todo-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 17px;
+  font-family: inherit;
+  color: var(--text);
+  padding: 14px 0;
+  transition: color 0.2s;
+  -webkit-appearance: none;
+}
+
+.todo-input::placeholder {
+  color: var(--sub);
+}
+
+.todo-input.completed {
+  color: var(--completed);
+  text-decoration: line-through;
+}
+
+/* ===== ゲームモード ===== */
+#game-mode {
+  flex: 1;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* スコア */
+#score-display {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* オーバーレイ */
+#game-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  transition: opacity 0.3s;
+}
+
+#game-overlay.hidden {
+  display: none;
+}
+
+#overlay-content {
+  text-align: center;
+  color: white;
+}
+
+#overlay-title {
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+
+#overlay-sub {
+  font-size: 18px;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 16px;
+}
+
+#overlay-score {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 20px;
+}
+
+#overlay-btn {
+  background: white;
+  color: black;
+  border: none;
+  border-radius: 25px;
+  padding: 12px 36px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== ユーティリティ ===== */
+.hidden {
+  display: none !important;
+}
+
+/* ゲームモード時のヘッダー */
+#header.game-header {
+  background: #111;
+  border-bottom-color: #333;
+}
+
+#header.game-header #app-title {
+  color: white;
+}
+
+#header.game-header #toggle-label {
+  color: #555;
+}

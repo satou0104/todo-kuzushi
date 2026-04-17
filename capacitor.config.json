@@ -1,0 +1,11 @@
+{
+  "appId": "com.satou0104.todokuzushi",
+  "appName": "todo崩し",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}
