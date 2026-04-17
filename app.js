@@ -112,11 +112,32 @@ const SPEED_BASE = 5.0;
 
 // ---- ゲーム状態 ----
 let blocks      = [];
-let ball        = { x: 0, y: 0, vx: 0, vy: 0 };
+let balls       = []; // 複数ボール対応
 let paddleX     = 0;
 let score       = 0;
-let gameState   = 'idle'; // idle | playing | cleared | gameover
+let gameState   = 'idle';
 let animId      = null;
+
+// ---- アイテム状態 ----
+let items       = []; // 落下中のアイテム
+let pierceTimer = 0;  // 貫通残り時間（フレーム数）
+let bigTimer    = 0;  // 大きくなる残り時間
+
+const ITEM_W    = 36;
+const ITEM_H    = 18;
+const ITEM_SPEED = 2.5;
+const ITEM_DROP_CHANCE = 0.15; // 15%の確率でドロップ
+
+// アイテム種類
+const ITEM_TYPES = {
+  TRIPLE: { label: '×3',   color: '#FF6584', desc: '3分割' },
+  PIERCE: { label: '貫通',  color: '#6C63FF', desc: '貫通' },
+  BIG:    { label: 'BIG',  color: '#FFCC00', desc: '巨大化' },
+};
+
+function currentBallR() {
+  return bigTimer > 0 ? BALL_R * 2.2 : BALL_R;
+}
 
 // ブロックカラー（todoごとに色を変える）
 const BLOCK_COLORS = [
@@ -215,17 +236,20 @@ function initGame() {
 
   const w = canvasW(), h = canvasH();
   paddleX = w / 2;
-  ball.x  = w / 2;
-  ball.y  = h * 0.65;
 
   const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 0.6;
-  ball.vx = SPEED_BASE * Math.cos(angle);
-  ball.vy = SPEED_BASE * Math.sin(angle);
+  balls = [{
+    x: w / 2, y: h * 0.65,
+    vx: SPEED_BASE * Math.cos(angle),
+    vy: SPEED_BASE * Math.sin(angle),
+  }];
 
-  score = 0;
+  items       = [];
+  pierceTimer = 0;
+  bigTimer    = 0;
+  score       = 0;
   scoreValue.textContent = '0';
 
-  // スタート画面なし → 即プレイ開始
   hideOverlay();
   gameState = 'playing';
   loop();
@@ -280,12 +304,13 @@ canvas.addEventListener('mousemove', (e) => {
   paddleX = Math.min(Math.max(x, PADDLE_W / 2), canvasW() - PADDLE_W / 2);
 });
 
-// ---- 衝突判定（円 vs 矩形） ----
-function ballHitsRect(bx, by, rx, ry, rw, rh) {
+// ---- 衝突判定（円 vs 矩形）ballR引数対応 ----
+function ballHitsRect(bx, by, rx, ry, rw, rh, r) {
+  const rad = r !== undefined ? r : BALL_R;
   const nearX = Math.max(rx, Math.min(bx, rx + rw));
   const nearY = Math.max(ry, Math.min(by, ry + rh));
   const dx = bx - nearX, dy = by - nearY;
-  return dx * dx + dy * dy <= BALL_R * BALL_R;
+  return dx * dx + dy * dy <= rad * rad;
 }
 
 // ---- ゲームループ ----
@@ -298,56 +323,97 @@ function loop() {
 
 function update() {
   const w = canvasW(), h = canvasH();
+  const py = h - 50;
+  const ballR = currentBallR();
 
-  ball.x += ball.vx;
-  ball.y += ball.vy;
+  // アイテムタイマー更新
+  if (pierceTimer > 0) pierceTimer--;
+  if (bigTimer    > 0) bigTimer--;
 
-  // 左右壁
-  if (ball.x - BALL_R <= 0)  { ball.x = BALL_R;      ball.vx =  Math.abs(ball.vx); }
-  if (ball.x + BALL_R >= w)  { ball.x = w - BALL_R;  ball.vx = -Math.abs(ball.vx); }
-  // 上壁
-  if (ball.y - BALL_R <= 0)  { ball.y = BALL_R;      ball.vy =  Math.abs(ball.vy); }
+  // ---- アイテム落下・取得 ----
+  items = items.filter(item => {
+    item.y += ITEM_SPEED;
+    // パドルで取得
+    if (
+      item.y + ITEM_H / 2 >= py - PADDLE_H / 2 &&
+      item.y - ITEM_H / 2 <= py + PADDLE_H / 2 &&
+      item.x + ITEM_W / 2 >= paddleX - PADDLE_W / 2 &&
+      item.x - ITEM_W / 2 <= paddleX + PADDLE_W / 2
+    ) {
+      applyItem(item.type);
+      return false;
+    }
+    // 画面外
+    return item.y < h + ITEM_H;
+  });
 
-  // 下（ゲームオーバー）
-  if (ball.y - BALL_R >= h) {
+  // ---- 各ボール更新 ----
+  const aliveBalls = [];
+  for (const ball of balls) {
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // 左右壁
+    if (ball.x - ballR <= 0)  { ball.x = ballR;      ball.vx =  Math.abs(ball.vx); }
+    if (ball.x + ballR >= w)  { ball.x = w - ballR;  ball.vx = -Math.abs(ball.vx); }
+    // 上壁
+    if (ball.y - ballR <= 0)  { ball.y = ballR;      ball.vy =  Math.abs(ball.vy); }
+
+    // 下（このボールは消える）
+    if (ball.y - ballR >= h) continue;
+
+    // パドル衝突
+    if (ball.vy > 0 && ballHitsRect(ball.x, ball.y, paddleX - PADDLE_W / 2, py - PADDLE_H / 2, PADDLE_W, PADDLE_H, ballR)) {
+      const hit = (ball.x - paddleX) / (PADDLE_W / 2);
+      const speed = Math.hypot(ball.vx, ball.vy);
+      ball.vx = hit * speed * 0.85;
+      ball.vy = -Math.abs(ball.vy);
+      if (Math.abs(ball.vy) < 3.5) ball.vy = -3.5;
+      ball.y = py - PADDLE_H / 2 - ballR;
+    }
+
+    // ブロック衝突
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      if (!b.alive) continue;
+      if (!ballHitsRect(ball.x, ball.y, b.x, b.y, b.w, b.h, ballR)) continue;
+
+      b.alive = false;
+      score += 10;
+      scoreValue.textContent = score;
+
+      // アイテムドロップ
+      if (Math.random() < ITEM_DROP_CHANCE) {
+        const types = Object.keys(ITEM_TYPES);
+        const type  = types[Math.floor(Math.random() * types.length)];
+        items.push({ x: b.x + b.w / 2, y: b.y, type });
+      }
+
+      // 貫通中は反射しない
+      if (pierceTimer <= 0) {
+        const ol  = (ball.x + ballR) - b.x;
+        const or_ = (b.x + b.w) - (ball.x - ballR);
+        const ot  = (ball.y + ballR) - b.y;
+        const ob  = (b.y + b.h) - (ball.y - ballR);
+        const minO = Math.min(ol, or_, ot, ob);
+        if (minO === ot || minO === ob) ball.vy = -ball.vy;
+        else                            ball.vx = -ball.vx;
+        break;
+      }
+    }
+
+    aliveBalls.push(ball);
+  }
+  balls = aliveBalls;
+
+  // 全ボール消えたらゲームオーバー
+  if (balls.length === 0) {
     gameState = 'gameover';
     cancelAnimationFrame(animId);
     draw();
     showOverlay('GAME OVER', '', 'SCORE: ' + score, true);
     checkAndShowSaveDialog();
     return;
-  }
-
-  // パドル衝突
-  const py = h - 50;
-  if (ball.vy > 0 && ballHitsRect(ball.x, ball.y, paddleX - PADDLE_W / 2, py - PADDLE_H / 2, PADDLE_W, PADDLE_H)) {
-    const hit = (ball.x - paddleX) / (PADDLE_W / 2); // -1 〜 1
-    const speed = Math.hypot(ball.vx, ball.vy);
-    ball.vx = hit * speed * 0.85;
-    ball.vy = -Math.abs(ball.vy);
-    if (Math.abs(ball.vy) < 3.5) ball.vy = -3.5;
-    ball.y = py - PADDLE_H / 2 - BALL_R;
-  }
-
-  // ブロック衝突
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    if (!b.alive) continue;
-    if (!ballHitsRect(ball.x, ball.y, b.x, b.y, b.w, b.h)) continue;
-
-    b.alive = false;
-    score += 10;
-    scoreValue.textContent = score;
-
-    // 反射方向
-    const ol = (ball.x + BALL_R) - b.x;
-    const or_ = (b.x + b.w) - (ball.x - BALL_R);
-    const ot = (ball.y + BALL_R) - b.y;
-    const ob = (b.y + b.h) - (ball.y - BALL_R);
-    const minO = Math.min(ol, or_, ot, ob);
-    if (minO === ot || minO === ob) ball.vy = -ball.vy;
-    else                            ball.vx = -ball.vx;
-    break;
   }
 
   // クリア判定
@@ -357,6 +423,26 @@ function update() {
     draw();
     showOverlay('🎉 CLEAR!', '', 'SCORE: ' + score, true);
     checkAndShowSaveDialog();
+  }
+}
+
+// ---- アイテム効果適用 ----
+function applyItem(type) {
+  if (type === 'TRIPLE') {
+    // 現在のボールを3つに増やす
+    const newBalls = [];
+    balls.forEach(b => {
+      const speed = Math.hypot(b.vx, b.vy);
+      [-0.4, 0, 0.4].forEach(offset => {
+        const angle = Math.atan2(b.vy, b.vx) + offset;
+        newBalls.push({ x: b.x, y: b.y, vx: speed * Math.cos(angle), vy: speed * Math.sin(angle) });
+      });
+    });
+    balls = newBalls.slice(0, 9); // 最大9個まで
+  } else if (type === 'PIERCE') {
+    pierceTimer = 300; // 5秒（60fps×5）
+  } else if (type === 'BIG') {
+    bigTimer = 300;
   }
 }
 
@@ -425,21 +511,58 @@ function draw() {
 
   // パドル
   const py = h - 50;
+  const paddleColor1 = pierceTimer > 0 ? '#FF6584' : '#00C7BE';
+  const paddleColor2 = pierceTimer > 0 ? '#6C63FF' : '#007AFF';
   const grad = ctx.createLinearGradient(paddleX - PADDLE_W / 2, 0, paddleX + PADDLE_W / 2, 0);
-  grad.addColorStop(0, '#00C7BE');
-  grad.addColorStop(1, '#007AFF');
+  grad.addColorStop(0, paddleColor1);
+  grad.addColorStop(1, paddleColor2);
   roundRect(ctx, paddleX - PADDLE_W / 2, py - PADDLE_H / 2, PADDLE_W, PADDLE_H, PADDLE_H / 2);
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // ボール
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.shadowColor = 'rgba(255,255,255,0.7)';
-  ctx.shadowBlur  = 8;
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  // アイテム描画
+  items.forEach(item => {
+    const info = ITEM_TYPES[item.type];
+    roundRect(ctx, item.x - ITEM_W / 2, item.y - ITEM_H / 2, ITEM_W, ITEM_H, 6);
+    ctx.fillStyle = info.color;
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(info.label, item.x, item.y);
+  });
+
+  // ボール（複数対応）
+  const ballR = currentBallR();
+  balls.forEach(ball => {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ballR, 0, Math.PI * 2);
+    ctx.fillStyle = bigTimer > 0 ? '#FFCC00' : '#fff';
+    ctx.shadowColor = bigTimer > 0 ? 'rgba(255,204,0,0.8)' : 'rgba(255,255,255,0.7)';
+    ctx.shadowBlur  = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
+  // アクティブアイテム表示（画面左上）
+  let statusX = 14;
+  const statusY = h - 28;
+  if (pierceTimer > 0) {
+    ctx.fillStyle = ITEM_TYPES.PIERCE.color;
+    ctx.font = 'bold 11px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`貫通 ${Math.ceil(pierceTimer/60)}s`, statusX, statusY);
+    statusX += 60;
+  }
+  if (bigTimer > 0) {
+    ctx.fillStyle = ITEM_TYPES.BIG.color;
+    ctx.font = 'bold 11px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`BIG ${Math.ceil(bigTimer/60)}s`, statusX, statusY);
+  }
 }
 
 // 角丸矩形ヘルパー
