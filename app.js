@@ -48,7 +48,7 @@ function renderTodoList() {
     input.className = 'todo-input' + (todo.completed ? ' completed' : '');
     input.placeholder = 'タスクを入力...';
     input.value = todo.text;
-    input.maxLength = 20;
+    input.maxLength = 15;
     input.addEventListener('input', (e) => {
       todo.text = e.target.value;
     });
@@ -137,52 +137,76 @@ function canvasH() { return canvas.height / window.devicePixelRatio; }
 
 // ---- ブロック生成 ----
 // ・completedのtodoはスキップ
-// ・todoごとに1行ずつ配置（折り返しあり）
+// ・todoごとに1行ずつ配置（文字数に応じてブロックサイズを自動調整）
 function generateBlocks() {
   blocks = [];
-  const stepX = CHAR_GW + CHAR_PAD;
-  const stepY = CHAR_GH + CHAR_PAD;
-  const maxCols = Math.floor((canvasW() - CHAR_PAD) / stepX);
+
+  // 基本定数（固定）
+  const BASE_MINI_W = 16;
+  const BASE_MINI_H = 14;
+  const BASE_MINI_PAD = 2;
+  const BASE_CHAR_PAD = 4;
+
   let row = 0;
 
   todos.forEach((todo, todoIdx) => {
-    // 空 or チェック済みはスキップ
     if (!todo.text.trim() || todo.completed) return;
     const color = BLOCK_COLORS[todoIdx % BLOCK_COLORS.length];
+    const charCount = [...todo.text].length;
 
-    let col = 0; // todoごとに列をリセット
+    // 1行に収まるようブロックサイズを計算
+    // 1文字グループ幅 = MINI_W*2 + MINI_PAD
+    // 必要幅 = charCount * (CHAR_GW + CHAR_PAD) + CHAR_PAD
+    const availW = canvasW() - BASE_CHAR_PAD * 2;
+    // 1文字あたりの最大幅
+    const maxCharW = Math.floor(availW / charCount);
+    // CHAR_GW = MINI_W*2 + MINI_PAD, CHAR_PAD = 4
+    // maxCharW = MINI_W*2 + MINI_PAD + CHAR_PAD → MINI_W = (maxCharW - MINI_PAD - CHAR_PAD) / 2
+    let miniW = Math.floor((maxCharW - BASE_MINI_PAD - BASE_CHAR_PAD) / 2);
+    miniW = Math.min(miniW, BASE_MINI_W); // 基本サイズを超えない
+    miniW = Math.max(miniW, 8);           // 最小8px
 
+    // 高さは幅に比例
+    const ratio = miniW / BASE_MINI_W;
+    const miniH = Math.max(Math.floor(BASE_MINI_H * ratio), 7);
+    const miniPad = BASE_MINI_PAD;
+    const charPad = BASE_CHAR_PAD;
+
+    const charGW = CHAR_COLS * miniW + (CHAR_COLS - 1) * miniPad;
+    const charGH = CHAR_ROWS * miniH + (CHAR_ROWS - 1) * miniPad;
+    const stepX  = charGW + charPad;
+    const stepY  = charGH + charPad;
+    const fontSize = Math.max(Math.floor(13 * ratio), 7);
+
+    let col = 0;
     [...todo.text].forEach((char) => {
-      // 1行に収まらない場合は折り返し
-      if (col >= maxCols) { col = 0; row++; }
-
-      const gx = CHAR_PAD + col * stepX;
+      const gx = charPad + col * stepX;
       const gy = BLOCK_TOP + row * stepY;
-      const labelX = gx + CHAR_GW / 2;
-      const labelY = gy + CHAR_GH / 2;
+      const labelX = gx + charGW / 2;
+      const labelY = gy + charGH / 2;
       const groupKey = labelX + '_' + labelY;
 
       for (let r = 0; r < CHAR_ROWS; r++) {
         for (let c = 0; c < CHAR_COLS; c++) {
-          const bx = gx + c * (MINI_W + MINI_PAD);
-          const by = gy + r * (MINI_H + MINI_PAD);
+          const bx = gx + c * (miniW + miniPad);
+          const by = gy + r * (miniH + miniPad);
           const isAnchor = (r === 0 && c === 0);
           blocks.push({
             x: bx, y: by,
-            w: MINI_W, h: MINI_H,
+            w: miniW, h: miniH,
             alive: true,
             color,
             groupKey,
             label: isAnchor ? char : '',
             labelX: isAnchor ? labelX : 0,
             labelY: isAnchor ? labelY : 0,
+            fontSize,
           });
         }
       }
       col++;
     });
 
-    // 次のtodoは必ず次の行から
     row++;
   });
 }
@@ -367,13 +391,14 @@ function draw() {
   blocks.forEach(b => {
     if (!b.groupKey) return;
     if (!groupMap.has(b.groupKey)) {
-      groupMap.set(b.groupKey, { label: '', labelX: 0, labelY: 0, aliveBlocks: [] });
+      groupMap.set(b.groupKey, { label: '', labelX: 0, labelY: 0, fontSize: 13, aliveBlocks: [] });
     }
     const g = groupMap.get(b.groupKey);
     if (b.label) {
-      g.label  = b.label;
-      g.labelX = b.labelX;
-      g.labelY = b.labelY;
+      g.label    = b.label;
+      g.labelX   = b.labelX;
+      g.labelY   = b.labelY;
+      g.fontSize = b.fontSize || 13;
     }
     if (b.alive) g.aliveBlocks.push(b);
   });
@@ -392,7 +417,7 @@ function draw() {
 
     // クリップ内に文字を描画
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px -apple-system, sans-serif';
+    ctx.font = `bold ${g.fontSize}px -apple-system, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(g.label, g.labelX, g.labelY);
