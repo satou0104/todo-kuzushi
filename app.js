@@ -97,8 +97,8 @@ const PADDLE_W  = 90;
 // 1文字を 2×2 個の小ブロックに分割
 const CHAR_COLS = 2;   // 横2個
 const CHAR_ROWS = 2;   // 縦2個
-const MINI_W    = 22;  // 小ブロック幅
-const MINI_H    = 20;  // 小ブロック高さ
+const MINI_W    = 16;  // 小ブロック幅
+const MINI_H    = 14;  // 小ブロック高さ
 const MINI_PAD  = 2;   // 小ブロック間隔
 // 1文字グループのサイズ
 const CHAR_GW   = CHAR_COLS * MINI_W + (CHAR_COLS - 1) * MINI_PAD; // 38px
@@ -392,7 +392,7 @@ function draw() {
 
     // クリップ内に文字を描画
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px -apple-system, sans-serif';
+    ctx.font = 'bold 13px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(g.label, g.labelX, g.labelY);
