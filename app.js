@@ -130,9 +130,9 @@ const ITEM_DROP_CHANCE = 0.15; // 15%の確率でドロップ
 
 // アイテム種類
 const ITEM_TYPES = {
-  TRIPLE: { label: '×3',   color: '#FF6584', desc: '3分割' },
-  PIERCE: { label: '貫通',  color: '#6C63FF', desc: '貫通' },
-  BIG:    { label: 'BIG',  color: '#FFCC00', desc: '巨大化' },
+  TRIPLE: { label: '×3', color: '#FF6584', desc: '3分割' },
+  PIERCE: { label: '＜',  color: '#6C63FF', desc: '貫通'  },
+  BIG:    { label: '⬤',  color: '#FFCC00', desc: '巨大化' },
 };
 
 function currentBallR() {
@@ -440,9 +440,9 @@ function applyItem(type) {
     });
     balls = newBalls.slice(0, 9); // 最大9個まで
   } else if (type === 'PIERCE') {
-    pierceTimer = 300; // 5秒（60fps×5）
+    pierceTimer = 600; // 10秒（60fps×10）
   } else if (type === 'BIG') {
-    bigTimer = 300;
+    bigTimer = 600;
   }
 }
 
@@ -553,7 +553,7 @@ function draw() {
     ctx.font = 'bold 11px -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`貫通 ${Math.ceil(pierceTimer/60)}s`, statusX, statusY);
+    ctx.fillText(`＜ ${Math.ceil(pierceTimer/60)}s`, statusX, statusY);
     statusX += 60;
   }
   if (bigTimer > 0) {
@@ -561,7 +561,7 @@ function draw() {
     ctx.font = 'bold 11px -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`BIG ${Math.ceil(bigTimer/60)}s`, statusX, statusY);
+    ctx.fillText(`⬤ ${Math.ceil(bigTimer/60)}s`, statusX, statusY);
   }
 }
 
