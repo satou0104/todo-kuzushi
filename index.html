@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>todo崩し</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ヘッダー -->
+    <header id="header">
+      <h1 id="app-title">todo崩し</h1>
+      <div id="toggle-wrap">
+        <span id="toggle-label">TODO</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="mode-toggle" />
+          <span class="slider"></span>
+        </label>
+        <span id="toggle-label-game">GAME</span>
+      </div>
+    </header>
+
+    <!-- TODOモード -->
+    <div id="todo-mode">
+      <ul id="todo-list">
+        <!-- JSで生成 -->
+      </ul>
+    </div>
+
+    <!-- ゲームモード -->
+    <div id="game-mode" class="hidden">
+      <canvas id="game-canvas"></canvas>
+      <div id="game-overlay">
+        <div id="overlay-content">
+          <p id="overlay-title">todo崩し</p>
+          <p id="overlay-sub">タップしてスタート</p>
+          <p id="overlay-score" class="hidden"></p>
+          <button id="overlay-btn" class="hidden">もう一度</button>
+        </div>
+      </div>
+      <div id="score-display">SCORE: <span id="score-value">0</span></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
