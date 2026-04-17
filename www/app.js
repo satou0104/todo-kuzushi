@@ -176,7 +176,7 @@ function generateBlocks() {
     const charGH = CHAR_ROWS * miniH + (CHAR_ROWS - 1) * miniPad;
     const stepX  = charGW + charPad;
     const stepY  = charGH + charPad;
-    const fontSize = Math.max(Math.floor(miniH * 1.1), 8);
+    const fontSize = Math.max(Math.floor(miniH * 1.6), 8);
 
     let col = 0;
     [...todo.text].forEach((char) => {
