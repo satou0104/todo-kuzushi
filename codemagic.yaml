@@ -20,10 +20,9 @@ workflows:
           npm install
       - name: Copy web files to www
         script: |
-          mkdir -p www
-          cp www/index.html www/index.html 2>/dev/null || true
-          cp www/style.css  www/style.css  2>/dev/null || true
-          cp www/app.js     www/app.js     2>/dev/null || true
+          cp index.html www/index.html
+          cp style.css  www/style.css
+          cp app.js     www/app.js
       - name: Capacitor sync
         script: |
           npx cap sync ios
