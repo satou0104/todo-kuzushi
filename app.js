@@ -23,6 +23,9 @@ const overlaySub   = document.getElementById('overlay-sub');
 const overlayScore = document.getElementById('overlay-score');
 const overlayBtn   = document.getElementById('overlay-btn');
 const scoreValue   = document.getElementById('score-value');
+const saveDialog   = document.getElementById('save-dialog');
+const saveYesBtn   = document.getElementById('save-yes-btn');
+const saveNoBtn    = document.getElementById('save-no-btn');
 
 // ===========================
 // ===== TODOリスト描画 =====
@@ -318,6 +321,7 @@ function update() {
     cancelAnimationFrame(animId);
     draw();
     showOverlay('GAME OVER', '', 'SCORE: ' + score, true);
+    checkAndShowSaveDialog();
     return;
   }
 
@@ -359,6 +363,7 @@ function update() {
     cancelAnimationFrame(animId);
     draw();
     showOverlay('🎉 CLEAR!', '', 'SCORE: ' + score, true);
+    checkAndShowSaveDialog();
   }
 }
 
@@ -458,6 +463,78 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
+
+// ===========================
+// ===== 保存確認ダイアログ =====
+// ===========================
+
+// 全ブロックが消えたtodoのインデックスを返す
+function getFullyClearedTodoIndices() {
+  // todoごとにgroupKeyのセットを作る
+  const todoGroupKeys = {};
+  todos.forEach((todo, idx) => {
+    if (!todo.text.trim() || todo.completed) return;
+    todoGroupKeys[idx] = new Set();
+  });
+
+  // blocksからgroupKeyとtodoIndexを紐付け
+  // colorでtodoを特定する（todoごとに色が違う）
+  const colorToTodoIdx = {};
+  todos.forEach((todo, idx) => {
+    if (!todo.text.trim() || todo.completed) return;
+    colorToTodoIdx[BLOCK_COLORS[idx % BLOCK_COLORS.length]] = idx;
+  });
+
+  // 各todoのgroupKeyを収集
+  const todoAllKeys   = {}; // 全groupKey
+  const todoAliveKeys = {}; // 生きているgroupKey
+  blocks.forEach(b => {
+    if (!b.groupKey) return;
+    const todoIdx = colorToTodoIdx[b.color];
+    if (todoIdx === undefined) return;
+    if (!todoAllKeys[todoIdx])   todoAllKeys[todoIdx]   = new Set();
+    if (!todoAliveKeys[todoIdx]) todoAliveKeys[todoIdx] = new Set();
+    todoAllKeys[todoIdx].add(b.groupKey);
+    if (b.alive) todoAliveKeys[todoIdx].add(b.groupKey);
+  });
+
+  // 全groupKeyが消えたtodoを返す
+  const cleared = [];
+  Object.keys(todoAllKeys).forEach(idx => {
+    const i = parseInt(idx);
+    const aliveCount = todoAliveKeys[i] ? todoAliveKeys[i].size : 0;
+    if (aliveCount === 0 && todoAllKeys[i].size > 0) {
+      cleared.push(i);
+    }
+  });
+  return cleared;
+}
+
+let pendingClearedIndices = [];
+
+function checkAndShowSaveDialog() {
+  const cleared = getFullyClearedTodoIndices();
+  if (cleared.length === 0) return; // 1行も消えていなければ表示しない
+  pendingClearedIndices = cleared;
+  // 少し遅らせてオーバーレイの後に表示
+  setTimeout(() => {
+    saveDialog.classList.remove('hidden');
+  }, 600);
+}
+
+saveYesBtn.addEventListener('click', () => {
+  // 崩したtodoにチェックを入れる
+  pendingClearedIndices.forEach(idx => {
+    todos[idx].completed = true;
+  });
+  pendingClearedIndices = [];
+  saveDialog.classList.add('hidden');
+});
+
+saveNoBtn.addEventListener('click', () => {
+  pendingClearedIndices = [];
+  saveDialog.classList.add('hidden');
+});
 
 // ===========================
 // ===== 初期化 =====

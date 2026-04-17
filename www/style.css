@@ -368,3 +368,62 @@ html, body {
 .hidden {
   display: none !important;
 }
+
+/* ===== 保存確認ダイアログ ===== */
+#save-dialog {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+
+#save-dialog-box {
+  background: #1a1a2e;
+  border: 1px solid rgba(108,99,255,0.4);
+  border-radius: 20px;
+  padding: 28px 32px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  min-width: 260px;
+}
+
+#save-dialog-title {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+#save-dialog-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+#save-no-btn, #save-yes-btn {
+  flex: 1;
+  padding: 12px 0;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#save-no-btn {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+#save-yes-btn {
+  background: linear-gradient(135deg, #6C63FF, #FF6584);
+  color: white;
+  box-shadow: 0 4px 15px rgba(108,99,255,0.4);
+}
