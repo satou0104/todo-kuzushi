@@ -31,7 +31,7 @@ function renderTodoList() {
   todoList.innerHTML = '';
   todos.forEach((todo) => {
     const li = document.createElement('li');
-    li.className = 'todo-item';
+    li.className = 'todo-item' + (todo.completed ? ' is-completed' : '');
 
     // チェックボタン
     const btn = document.createElement('button');
@@ -91,13 +91,20 @@ modeToggle.addEventListener('change', () => {
 // ===========================
 
 // ---- 定数 ----
-const BALL_R    = 9;
+const BALL_R    = 7;
 const PADDLE_H  = 13;
 const PADDLE_W  = 90;
-const BLOCK_W   = 44;
-const BLOCK_H   = 28;
-const BLOCK_PAD = 6;
-const BLOCK_TOP = 55;
+// 1文字を 2×2 個の小ブロックに分割
+const CHAR_COLS = 2;   // 横2個
+const CHAR_ROWS = 2;   // 縦2個
+const MINI_W    = 22;  // 小ブロック幅
+const MINI_H    = 20;  // 小ブロック高さ
+const MINI_PAD  = 2;   // 小ブロック間隔
+// 1文字グループのサイズ
+const CHAR_GW   = CHAR_COLS * MINI_W + (CHAR_COLS - 1) * MINI_PAD; // 38px
+const CHAR_GH   = CHAR_ROWS * MINI_H + (CHAR_ROWS - 1) * MINI_PAD; // 34px
+const CHAR_PAD  = 6;   // 文字グループ間の余白
+const BLOCK_TOP = 50;
 const SPEED_BASE = 5.0;
 
 // ---- ゲーム状態 ----
@@ -129,21 +136,54 @@ function canvasW() { return canvas.width  / window.devicePixelRatio; }
 function canvasH() { return canvas.height / window.devicePixelRatio; }
 
 // ---- ブロック生成 ----
+// ・completedのtodoはスキップ
+// ・todoごとに1行ずつ配置（折り返しあり）
 function generateBlocks() {
   blocks = [];
-  const maxCols = Math.floor((canvasW() - BLOCK_PAD) / (BLOCK_W + BLOCK_PAD));
-  let col = 0, row = 0;
+  const stepX = CHAR_GW + CHAR_PAD;
+  const stepY = CHAR_GH + CHAR_PAD;
+  const maxCols = Math.floor((canvasW() - CHAR_PAD) / stepX);
+  let row = 0;
 
   todos.forEach((todo, todoIdx) => {
-    if (!todo.text.trim()) return;
+    // 空 or チェック済みはスキップ
+    if (!todo.text.trim() || todo.completed) return;
     const color = BLOCK_COLORS[todoIdx % BLOCK_COLORS.length];
+
+    let col = 0; // todoごとに列をリセット
+
     [...todo.text].forEach((char) => {
-      const x = BLOCK_PAD + col * (BLOCK_W + BLOCK_PAD);
-      const y = BLOCK_TOP + row * (BLOCK_H + BLOCK_PAD);
-      blocks.push({ x, y, w: BLOCK_W, h: BLOCK_H, alive: true, color, label: char });
-      col++;
+      // 1行に収まらない場合は折り返し
       if (col >= maxCols) { col = 0; row++; }
+
+      const gx = CHAR_PAD + col * stepX;
+      const gy = BLOCK_TOP + row * stepY;
+      const labelX = gx + CHAR_GW / 2;
+      const labelY = gy + CHAR_GH / 2;
+      const groupKey = labelX + '_' + labelY;
+
+      for (let r = 0; r < CHAR_ROWS; r++) {
+        for (let c = 0; c < CHAR_COLS; c++) {
+          const bx = gx + c * (MINI_W + MINI_PAD);
+          const by = gy + r * (MINI_H + MINI_PAD);
+          const isAnchor = (r === 0 && c === 0);
+          blocks.push({
+            x: bx, y: by,
+            w: MINI_W, h: MINI_H,
+            alive: true,
+            color,
+            groupKey,
+            label: isAnchor ? char : '',
+            labelX: isAnchor ? labelX : 0,
+            labelY: isAnchor ? labelY : 0,
+          });
+        }
+      }
+      col++;
     });
+
+    // 次のtodoは必ず次の行から
+    row++;
   });
 }
 
@@ -164,9 +204,11 @@ function initGame() {
 
   score = 0;
   scoreValue.textContent = '0';
-  gameState = 'idle';
 
-  showOverlay('todo崩し', 'タップしてスタート', null, false);
+  // スタート画面なし → 即プレイ開始
+  hideOverlay();
+  gameState = 'playing';
+  loop();
 }
 
 // ---- ゲーム停止 ----
@@ -196,15 +238,6 @@ function showOverlay(title, sub, scoreText, showBtn) {
 function hideOverlay() {
   gameOverlay.classList.add('hidden');
 }
-
-// ---- オーバーレイタップ → スタート ----
-gameOverlay.addEventListener('click', () => {
-  if (gameState === 'idle') {
-    hideOverlay();
-    gameState = 'playing';
-    loop();
-  }
-});
 
 // ---- もう一度ボタン ----
 overlayBtn.addEventListener('click', (e) => {
@@ -317,16 +350,54 @@ function draw() {
   // ブロック
   blocks.forEach(b => {
     if (!b.alive) return;
-    // 角丸矩形
-    roundRect(ctx, b.x, b.y, b.w, b.h, 5);
-    ctx.fillStyle = b.color + 'D9'; // 85% opacity
+    // 小ブロック本体
+    roundRect(ctx, b.x, b.y, b.w, b.h, 3);
+    ctx.fillStyle = b.color + 'D9';
     ctx.fill();
-    // 文字
+    // 枠線（立体感）
+    roundRect(ctx, b.x, b.y, b.w, b.h, 3);
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
+
+  // 文字描画：生きているブロックの領域をクリップマスクにして文字を描く
+  // → 壊れたブロックの部分だけ文字が欠ける
+  const groupMap = new Map();
+  blocks.forEach(b => {
+    if (!b.groupKey) return;
+    if (!groupMap.has(b.groupKey)) {
+      groupMap.set(b.groupKey, { label: '', labelX: 0, labelY: 0, aliveBlocks: [] });
+    }
+    const g = groupMap.get(b.groupKey);
+    if (b.label) {
+      g.label  = b.label;
+      g.labelX = b.labelX;
+      g.labelY = b.labelY;
+    }
+    if (b.alive) g.aliveBlocks.push(b);
+  });
+
+  groupMap.forEach((g) => {
+    if (!g.label || g.aliveBlocks.length === 0) return;
+
+    ctx.save();
+
+    // 生きているブロックの矩形をクリッピング領域に設定
+    ctx.beginPath();
+    g.aliveBlocks.forEach(b => {
+      ctx.rect(b.x, b.y, b.w, b.h);
+    });
+    ctx.clip();
+
+    // クリップ内に文字を描画
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px -apple-system, sans-serif';
+    ctx.font = 'bold 18px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2);
+    ctx.fillText(g.label, g.labelX, g.labelY);
+
+    ctx.restore();
   });
 
   // パドル
