@@ -32,9 +32,15 @@ const saveNoBtn    = document.getElementById('save-no-btn');
 // ===========================
 function renderTodoList() {
   todoList.innerHTML = '';
-  todos.forEach((todo) => {
+  todos.forEach((todo, index) => {
     const li = document.createElement('li');
     li.className = 'todo-item' + (todo.completed ? ' is-completed' : '');
+    li.dataset.index = index;
+
+    // ドラッグハンドル
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.innerHTML = '&#8942;&#8942;'; // ⋮⋮
 
     // チェックボタン
     const btn = document.createElement('button');
@@ -59,10 +65,123 @@ function renderTodoList() {
       if (e.key === 'Enter') input.blur();
     });
 
+    li.appendChild(handle);
     li.appendChild(btn);
     li.appendChild(input);
     todoList.appendChild(li);
+
+    // 長押しドラッグ
+    setupDrag(li, index);
   });
+}
+
+// ===========================
+// ===== ドラッグ並び替え =====
+// ===========================
+let dragSrc = null;
+let dragTimer = null;
+let dragGhost = null;
+let dragStartY = 0;
+let dragOffsetY = 0;
+
+function setupDrag(li, index) {
+  li.addEventListener('touchstart', (e) => {
+    // inputにフォーカス中は無視
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    const touch = e.touches[0];
+    dragStartY = touch.clientY;
+
+    dragTimer = setTimeout(() => {
+      startDrag(li, touch.clientY);
+    }, 450);
+  }, { passive: true });
+
+  li.addEventListener('touchmove', (e) => {
+    if (!dragGhost) {
+      clearTimeout(dragTimer);
+      return;
+    }
+    e.preventDefault();
+    const touch = e.touches[0];
+    moveDrag(touch.clientY);
+  }, { passive: false });
+
+  li.addEventListener('touchend', () => {
+    clearTimeout(dragTimer);
+    if (dragGhost) endDrag();
+  });
+
+  li.addEventListener('touchcancel', () => {
+    clearTimeout(dragTimer);
+    if (dragGhost) cancelDrag();
+  });
+}
+
+function startDrag(li, clientY) {
+  dragSrc = li;
+  const rect = li.getBoundingClientRect();
+  dragOffsetY = clientY - rect.top;
+
+  // ゴースト（浮いてるやつ）を作成
+  dragGhost = li.cloneNode(true);
+  dragGhost.className = 'todo-item drag-ghost';
+  dragGhost.style.cssText = `
+    position: fixed;
+    left: ${rect.left}px;
+    top: ${rect.top}px;
+    width: ${rect.width}px;
+    z-index: 1000;
+    pointer-events: none;
+    transform: scale(1.03);
+    box-shadow: 0 8px 30px rgba(108,99,255,0.5);
+    transition: none;
+  `;
+  document.body.appendChild(dragGhost);
+
+  // 元のアイテムを半透明に
+  li.style.opacity = '0.3';
+
+  // 振動フィードバック
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+function moveDrag(clientY) {
+  if (!dragGhost || !dragSrc) return;
+  const y = clientY - dragOffsetY;
+  dragGhost.style.top = y + 'px';
+
+  // どのアイテムの上にいるか判定
+  const items = Array.from(todoList.querySelectorAll('.todo-item:not(.drag-ghost)'));
+  for (const item of items) {
+    if (item === dragSrc) continue;
+    const rect = item.getBoundingClientRect();
+    const mid  = rect.top + rect.height / 2;
+    if (clientY < mid) {
+      todoList.insertBefore(dragSrc, item);
+      break;
+    } else if (item === items[items.length - 1] && clientY > mid) {
+      todoList.appendChild(dragSrc);
+    }
+  }
+}
+
+function endDrag() {
+  if (!dragGhost || !dragSrc) return;
+
+  // DOM順序からtodosを並び替え
+  const newOrder = Array.from(todoList.querySelectorAll('.todo-item:not(.drag-ghost)'))
+    .map(li => parseInt(li.dataset.index));
+  const newTodos = newOrder.map(i => todos[i]);
+  todos.splice(0, todos.length, ...newTodos);
+
+  cancelDrag();
+  renderTodoList();
+}
+
+function cancelDrag() {
+  if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+  if (dragSrc)   { dragSrc.style.opacity = ''; dragSrc = null; }
+  dragTimer = null;
 }
 
 // ===========================

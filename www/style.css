@@ -213,6 +213,26 @@ html, body {
   border-color: rgba(255,255,255,0.05);
 }
 
+/* ドラッグハンドル */
+.drag-handle {
+  font-size: 14px;
+  color: rgba(255,255,255,0.2);
+  margin-right: 10px;
+  letter-spacing: -3px;
+  flex-shrink: 0;
+  cursor: grab;
+  padding: 4px 2px;
+  user-select: none;
+}
+
+/* ドラッグ中のゴースト */
+.drag-ghost {
+  border-radius: 16px !important;
+  opacity: 1 !important;
+  background: rgba(108,99,255,0.15) !important;
+  border-color: rgba(108,99,255,0.5) !important;
+}
+
 /* チェックボタン */
 .check-btn {
   width: 26px;
