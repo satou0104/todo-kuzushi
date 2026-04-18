@@ -10,37 +10,30 @@
   <div id="app">
     <!-- ヘッダー -->
     <header id="header">
-      <h1 id="app-title">todo崩し</h1>
-      <div id="toggle-wrap">
-        <span id="toggle-label">TODO</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="mode-toggle" />
-          <span class="slider"></span>
-        </label>
-        <span id="toggle-label-game">GAME</span>
+      <!-- セグメントコントロール -->
+      <div id="segment-control">
+        <button class="seg-btn active" data-mode="todo">TODO</button>
+        <button class="seg-btn" data-mode="break">BREAK</button>
+        <button class="seg-btn" data-mode="invader">INVADER</button>
       </div>
     </header>
 
     <!-- TODOモード -->
     <div id="todo-mode">
-      <ul id="todo-list">
-        <!-- JSで生成 -->
-      </ul>
+      <ul id="todo-list"></ul>
     </div>
 
-    <!-- ゲームモード -->
+    <!-- BREAKモード（ブロック崩し） -->
     <div id="game-mode" class="hidden">
       <canvas id="game-canvas"></canvas>
-      <div id="game-overlay">
+      <div id="game-overlay" class="hidden">
         <div id="overlay-content">
-          <p id="overlay-title">todo崩し</p>
-          <p id="overlay-sub">タップしてスタート</p>
+          <p id="overlay-title"></p>
+          <p id="overlay-sub"></p>
           <p id="overlay-score" class="hidden"></p>
           <button id="overlay-btn" class="hidden">もう一度</button>
         </div>
       </div>
-
-      <!-- 保存確認ダイアログ -->
       <div id="save-dialog" class="hidden">
         <div id="save-dialog-box">
           <p id="save-dialog-title">崩したタスクを<br>完了にしますか？</p>
@@ -51,6 +44,19 @@
         </div>
       </div>
       <div id="score-display">SCORE: <span id="score-value">0</span></div>
+    </div>
+
+    <!-- INVADERモード -->
+    <div id="invader-mode" class="hidden">
+      <canvas id="invader-canvas"></canvas>
+      <div id="invader-overlay" class="hidden">
+        <div id="invader-overlay-content">
+          <p id="invader-overlay-title"></p>
+          <p id="invader-overlay-score" class="hidden"></p>
+          <button id="invader-overlay-btn">もう一度</button>
+        </div>
+      </div>
+      <div id="invader-score-display">SCORE: <span id="invader-score-value">0</span></div>
     </div>
   </div>
 

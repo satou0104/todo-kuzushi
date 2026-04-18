@@ -45,7 +45,7 @@ html, body {
 #header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   height: var(--header-h);
   padding: 0 20px;
   background: rgba(15,15,26,0.95);
@@ -88,6 +88,38 @@ html, body {
 
 #toggle-label-game.active {
   color: var(--accent);
+}
+
+/* ===== セグメントコントロール ===== */
+#segment-control {
+  display: flex;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--card-border);
+}
+
+.seg-btn {
+  flex: 1;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.seg-btn.active {
+  background: linear-gradient(135deg, #6C63FF, #FF6584);
+  color: white;
+  box-shadow: 0 2px 8px rgba(108,99,255,0.4);
 }
 
 /* ===== トグルスイッチ ===== */
@@ -382,6 +414,82 @@ html, body {
 #header.game-header {
   background: rgba(0,0,0,0.9);
   border-bottom-color: rgba(255,255,255,0.08);
+}
+
+/* ===== INVADERモード ===== */
+#invader-mode {
+  flex: 1;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+#invader-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#invader-score-display {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  color: rgba(255,255,255,0.6);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#invader-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+#invader-overlay.hidden { display: none; }
+
+#invader-overlay-content {
+  text-align: center;
+  color: white;
+}
+
+#invader-overlay-title {
+  font-size: 38px;
+  font-weight: 900;
+  margin-bottom: 12px;
+}
+
+#invader-overlay-score {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #6C63FF, #FF6584);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+#invader-overlay-btn {
+  background: linear-gradient(135deg, #6C63FF, #FF6584);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 14px 40px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 20px rgba(108,99,255,0.4);
 }
 
 /* ===== ユーティリティ ===== */
