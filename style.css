@@ -94,26 +94,27 @@ html, body {
 #segment-control {
   display: flex;
   background: rgba(255,255,255,0.08);
-  border-radius: 12px;
-  padding: 3px;
-  gap: 2px;
+  border-radius: 14px;
+  padding: 4px;
+  gap: 3px;
   border: 1px solid var(--card-border);
 }
 
 .seg-btn {
-  flex: 1;
-  padding: 7px 16px;
+  width: 80px;
+  padding: 9px 0;
   border: none;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: rgba(255,255,255,0.45);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
   -webkit-tap-highlight-color: transparent;
+  text-align: center;
 }
 
 .seg-btn.active {
