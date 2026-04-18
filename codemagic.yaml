@@ -1,7 +1,10 @@
 workflows:
   ios-release:
     name: todo崩し iOS Release
-    max_build_duration: 60
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    integrations:
+      app_store_connect: codemagic
     environment:
       ios_signing:
         distribution_type: app_store
@@ -9,13 +12,11 @@ workflows:
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
-        BUNDLE_ID: "com.satou0104.todokuzushi"
       xcode: latest
+      cocoapods: default
       node: latest
-    integrations:
-      app_store_connect: codemagic
     scripts:
-      - name: Install dependencies
+      - name: Install npm dependencies
         script: |
           npm install
       - name: Copy web files to www
@@ -30,7 +31,10 @@ workflows:
         script: |
           cd ios/App
           agvtool new-version -all $(($(date +%s) / 60))
-      - name: Build iOS
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
