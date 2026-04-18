@@ -131,7 +131,7 @@ const ITEM_DROP_CHANCE = 0.15; // 15%の確率でドロップ
 // アイテム種類
 const ITEM_TYPES = {
   TRIPLE: { label: '×3', color: '#FF6584', desc: '3分割' },
-  PIERCE: { label: '＜',  color: '#6C63FF', desc: '貫通'  },
+  PIERCE: { label: '貫通',  color: '#6C63FF', desc: '貫通'  },
   BIG:    { label: '⬤',  color: '#FFCC00', desc: '巨大化' },
 };
 
@@ -553,7 +553,7 @@ function draw() {
     ctx.font = 'bold 11px -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`＜ ${Math.ceil(pierceTimer/60)}s`, statusX, statusY);
+    ctx.fillText(`貫通 ${Math.ceil(pierceTimer/60)}s`, statusX, statusY);
     statusX += 60;
   }
   if (bigTimer > 0) {
