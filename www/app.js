@@ -761,10 +761,11 @@ let invEnemyShootTimer = 0;
 // INVADERアイテム状態
 let rapidTimer  = 0;  // 連射残り時間
 let shieldCount = 0;  // 盾の残り回数
+let stopTimer   = 0;  // 時間停止残り時間
 
 const INV_ITEM_TYPES = {
   RAPID:  { label: '連射', color: '#FF9500' },
-  BOMB:   { label: '💥',   color: '#FF3B30' },
+  STOP:   { label: 'STOP', color: '#007AFF' },
   SHIELD: { label: '盾',   color: '#34C759' },
 };
 const INV_ITEM_DROP_CHANCE = 0.2;
@@ -820,6 +821,7 @@ function initInvader() {
   invItems = [];
   rapidTimer  = 0;
   shieldCount = 0;
+  stopTimer   = 0;
   invScore = 0;
   invMoveDir = 1;
   invMoveTimer = 0;
@@ -849,6 +851,7 @@ function invUpdate() {
 
   // アイテムタイマー更新
   if (rapidTimer > 0) rapidTimer--;
+  if (stopTimer  > 0) stopTimer--;
 
   // アイテム落下・取得
   invItems = invItems.filter(item => {
@@ -864,7 +867,8 @@ function invUpdate() {
     return item.y < invCanvasH() + INV_ITEM_H;
   });
 
-  // 敵の移動
+  // 敵の移動（STOP中は止まる）
+  if (stopTimer <= 0) {
   invMoveTimer++;
   if (invMoveTimer >= invMoveInterval) {
     invMoveTimer = 0;
@@ -897,16 +901,18 @@ function invUpdate() {
       checkAndShowInvaderSaveDialog();
       return;
     }
-  }
+  } // end stopTimer <= 0 (move)
 
-  // 敵の弾発射
-  invEnemyShootTimer++;
-  if (invEnemyShootTimer >= 90) {
-    invEnemyShootTimer = 0;
-    const aliveInvaders = invaders.filter(i => i.alive);
-    if (aliveInvaders.length > 0) {
-      const shooter = aliveInvaders[Math.floor(Math.random() * aliveInvaders.length)];
-      enemyBullets.push({ x: shooter.x + INV_W / 2, y: shooter.y + INV_H });
+  // 敵の弾発射（STOP中は撃たない）
+  if (stopTimer <= 0) {
+    invEnemyShootTimer++;
+    if (invEnemyShootTimer >= 90) {
+      invEnemyShootTimer = 0;
+      const aliveInvaders = invaders.filter(i => i.alive);
+      if (aliveInvaders.length > 0) {
+        const shooter = aliveInvaders[Math.floor(Math.random() * aliveInvaders.length)];
+        enemyBullets.push({ x: shooter.x + INV_W / 2, y: shooter.y + INV_H });
+      }
     }
   }
 
@@ -981,21 +987,8 @@ invaderOverlayBtn.addEventListener('click', () => {
 function applyInvItem(type) {
   if (type === 'RAPID') {
     rapidTimer = 600; // 10秒
-  } else if (type === 'BOMB') {
-    // 画面上の全敵を爆破（範囲内）
-    const cx = cannon.x;
-    const bombRange = invCanvasW() * 0.4;
-    let count = 0;
-    invaders.forEach(inv => {
-      if (!inv.alive) return;
-      const dist = Math.abs((inv.x + INV_W / 2) - cx);
-      if (dist <= bombRange) {
-        inv.alive = false;
-        count++;
-      }
-    });
-    invScore += count * 10;
-    invaderScoreValue.textContent = invScore;
+  } else if (type === 'STOP') {
+    stopTimer = 300; // 5秒（敵が止まる）
   } else if (type === 'SHIELD') {
     shieldCount++;
   }
@@ -1037,9 +1030,9 @@ function invDraw() {
     if (!inv.alive) return;
     // 本体
     roundRectCtx(invaderCtx, inv.x, inv.y, INV_W, INV_H, 4);
-    invaderCtx.fillStyle = inv.color + 'CC';
+    invaderCtx.fillStyle = stopTimer > 0 ? '#007AFF99' : inv.color + 'CC';
     invaderCtx.fill();
-    invaderCtx.strokeStyle = inv.color;
+    invaderCtx.strokeStyle = stopTimer > 0 ? '#007AFF' : inv.color;
     invaderCtx.lineWidth = 1;
     invaderCtx.stroke();
     // 文字
@@ -1109,6 +1102,14 @@ function invDraw() {
     invaderCtx.textAlign = 'left';
     invaderCtx.textBaseline = 'middle';
     invaderCtx.fillText(`連射 ${Math.ceil(rapidTimer/60)}s`, sx, sy);
+    sx += 70;
+  }
+  if (stopTimer > 0) {
+    invaderCtx.fillStyle = INV_ITEM_TYPES.STOP.color;
+    invaderCtx.font = 'bold 11px -apple-system, sans-serif';
+    invaderCtx.textAlign = 'left';
+    invaderCtx.textBaseline = 'middle';
+    invaderCtx.fillText(`STOP ${Math.ceil(stopTimer/60)}s`, sx, sy);
     sx += 70;
   }
   if (shieldCount > 0) {
