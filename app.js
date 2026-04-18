@@ -32,9 +32,15 @@ const saveNoBtn    = document.getElementById('save-no-btn');
 // ===========================
 function renderTodoList() {
   todoList.innerHTML = '';
-  todos.forEach((todo) => {
+  todos.forEach((todo, index) => {
     const li = document.createElement('li');
     li.className = 'todo-item' + (todo.completed ? ' is-completed' : '');
+    li.dataset.index = index;
+
+    // ドラッグハンドル
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.innerHTML = '&#8942;&#8942;'; // ⋮⋮
 
     // チェックボタン
     const btn = document.createElement('button');
@@ -59,34 +65,176 @@ function renderTodoList() {
       if (e.key === 'Enter') input.blur();
     });
 
+    li.appendChild(handle);
     li.appendChild(btn);
     li.appendChild(input);
     todoList.appendChild(li);
+
+    // 長押しドラッグ
+    setupDrag(li, index);
   });
+}
+
+// ===========================
+// ===== ドラッグ並び替え =====
+// ===========================
+let dragSrc = null;
+let dragTimer = null;
+let dragGhost = null;
+let dragStartY = 0;
+let dragOffsetY = 0;
+
+function setupDrag(li, index) {
+  li.addEventListener('touchstart', (e) => {
+    // inputにフォーカス中は無視
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    const touch = e.touches[0];
+    dragStartY = touch.clientY;
+
+    dragTimer = setTimeout(() => {
+      startDrag(li, touch.clientY);
+    }, 450);
+  }, { passive: true });
+
+  li.addEventListener('touchmove', (e) => {
+    if (!dragGhost) {
+      clearTimeout(dragTimer);
+      return;
+    }
+    e.preventDefault();
+    const touch = e.touches[0];
+    moveDrag(touch.clientY);
+  }, { passive: false });
+
+  li.addEventListener('touchend', () => {
+    clearTimeout(dragTimer);
+    if (dragGhost) endDrag();
+  });
+
+  li.addEventListener('touchcancel', () => {
+    clearTimeout(dragTimer);
+    if (dragGhost) cancelDrag();
+  });
+}
+
+function startDrag(li, clientY) {
+  dragSrc = li;
+  const rect = li.getBoundingClientRect();
+  dragOffsetY = clientY - rect.top;
+
+  // ゴースト（浮いてるやつ）を作成
+  dragGhost = li.cloneNode(true);
+  dragGhost.className = 'todo-item drag-ghost';
+  dragGhost.style.cssText = `
+    position: fixed;
+    left: ${rect.left}px;
+    top: ${rect.top}px;
+    width: ${rect.width}px;
+    z-index: 1000;
+    pointer-events: none;
+    transform: scale(1.03);
+    box-shadow: 0 8px 30px rgba(108,99,255,0.5);
+    transition: none;
+  `;
+  document.body.appendChild(dragGhost);
+
+  // 元のアイテムを半透明に
+  li.style.opacity = '0.3';
+
+  // 振動フィードバック
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+function moveDrag(clientY) {
+  if (!dragGhost || !dragSrc) return;
+  const y = clientY - dragOffsetY;
+  dragGhost.style.top = y + 'px';
+
+  // どのアイテムの上にいるか判定
+  const items = Array.from(todoList.querySelectorAll('.todo-item:not(.drag-ghost)'));
+  for (const item of items) {
+    if (item === dragSrc) continue;
+    const rect = item.getBoundingClientRect();
+    const mid  = rect.top + rect.height / 2;
+    if (clientY < mid) {
+      todoList.insertBefore(dragSrc, item);
+      break;
+    } else if (item === items[items.length - 1] && clientY > mid) {
+      todoList.appendChild(dragSrc);
+    }
+  }
+}
+
+function endDrag() {
+  if (!dragGhost || !dragSrc) return;
+
+  // DOM順序からtodosを並び替え
+  const newOrder = Array.from(todoList.querySelectorAll('.todo-item:not(.drag-ghost)'))
+    .map(li => parseInt(li.dataset.index));
+  const newTodos = newOrder.map(i => todos[i]);
+  todos.splice(0, todos.length, ...newTodos);
+
+  cancelDrag();
+  renderTodoList();
+}
+
+function cancelDrag() {
+  if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+  if (dragSrc)   { dragSrc.style.opacity = ''; dragSrc = null; }
+  dragTimer = null;
 }
 
 // ===========================
 // ===== モード切り替え =====
 // ===========================
-modeToggle.addEventListener('change', () => {
-  const isGame = modeToggle.checked;
+const segBtns = document.querySelectorAll('.seg-btn');
+const invaderMode = document.getElementById('invader-mode');
+const invaderCanvas = document.getElementById('invader-canvas');
+const invaderCtx = invaderCanvas.getContext('2d');
+const invaderOverlay = document.getElementById('invader-overlay');
+const invaderOverlayTitle = document.getElementById('invader-overlay-title');
+const invaderOverlayScore = document.getElementById('invader-overlay-score');
+const invaderOverlayBtn = document.getElementById('invader-overlay-btn');
+const invaderScoreValue = document.getElementById('invader-score-value');
 
-  if (isGame) {
-    // → ゲームモードへ
-    todoMode.classList.add('hidden');
+let currentMode = 'todo';
+
+function switchMode(mode) {
+  // 全モード非表示
+  todoMode.classList.add('hidden');
+  gameMode.classList.add('hidden');
+  invaderMode.classList.add('hidden');
+  header.classList.remove('game-header');
+
+  // セグメントボタン更新
+  segBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+
+  currentMode = mode;
+
+  if (mode === 'todo') {
+    todoMode.classList.remove('hidden');
+    renderTodoList();
+  } else if (mode === 'break') {
     gameMode.classList.remove('hidden');
     header.classList.add('game-header');
-    toggleLabelGame.classList.add('active');
     initGame();
-  } else {
-    // → TODOモードへ
-    stopGame();
-    gameMode.classList.add('hidden');
-    todoMode.classList.remove('hidden');
-    header.classList.remove('game-header');
-    toggleLabelGame.classList.remove('active');
-    renderTodoList();
+  } else if (mode === 'invader') {
+    invaderMode.classList.remove('hidden');
+    header.classList.add('game-header');
+    initInvader();
   }
+}
+
+segBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    if (mode === currentMode) return;
+    if (currentMode === 'break') stopGame();
+    if (currentMode === 'invader') stopInvader();
+    switchMode(mode);
+  });
 });
 
 // ===========================
@@ -578,6 +726,454 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+// ===========================
+// ===== INVADERゲーム =====
+// ===========================
+
+const INV_COLS    = 8;   // 横の敵数
+const INV_W       = 32;  // 敵の幅
+const INV_H       = 22;  // 敵の高さ
+const INV_PAD_X   = 6;
+const INV_PAD_Y   = 8;
+const INV_TOP     = 50;
+const CANNON_W    = 40;
+const CANNON_H    = 14;
+const BULLET_W    = 4;
+const BULLET_H    = 12;
+const BULLET_SPEED = 8;
+const ENEMY_BULLET_SPEED = 3;
+
+let invaders      = [];  // { x, y, alive, label, color, todoIdx }
+let cannon        = { x: 0 };
+let bullets       = [];  // プレイヤーの弾 { x, y }
+let enemyBullets  = [];  // 敵の弾 { x, y }
+let invItems      = [];  // 落下アイテム { x, y, type }
+let invScore      = 0;
+let invGameState  = 'idle';
+let invAnimId     = null;
+let invMoveDir    = 1;   // 1=右, -1=左
+let invMoveTimer  = 0;
+let invMoveInterval = 60; // フレーム数ごとに移動
+let invEnemyShootTimer = 0;
+
+// INVADERアイテム状態
+let rapidTimer  = 0;  // 連射残り時間
+let shieldCount = 0;  // 盾の残り回数
+
+const INV_ITEM_TYPES = {
+  RAPID:  { label: '連射', color: '#FF9500' },
+  BOMB:   { label: '💥',   color: '#FF3B30' },
+  SHIELD: { label: '盾',   color: '#34C759' },
+};
+const INV_ITEM_DROP_CHANCE = 0.2;
+const INV_ITEM_W  = 32;
+const INV_ITEM_H  = 18;
+const INV_ITEM_SPEED = 1.5;
+
+function invCanvasW() { return invaderCanvas.width  / window.devicePixelRatio; }
+function invCanvasH() { return invaderCanvas.height / window.devicePixelRatio; }
+
+function resizeInvaderCanvas() {
+  const rect = invaderMode.getBoundingClientRect();
+  invaderCanvas.width  = rect.width  * window.devicePixelRatio;
+  invaderCanvas.height = rect.height * window.devicePixelRatio;
+  invaderCanvas.style.width  = rect.width  + 'px';
+  invaderCanvas.style.height = rect.height + 'px';
+  invaderCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+
+function generateInvaders() {
+  invaders = [];
+  const activeTodos = todos.filter(t => t.text.trim() && !t.completed);
+  if (activeTodos.length === 0) return;
+
+  // 最大INV_COLS列、todoごとに1行
+  activeTodos.forEach((todo, rowIdx) => {
+    const chars = [...todo.text].slice(0, INV_COLS);
+    const color = BLOCK_COLORS[todos.indexOf(todo) % BLOCK_COLORS.length];
+    const totalW = chars.length * (INV_W + INV_PAD_X) - INV_PAD_X;
+    const startX = (invCanvasW() - totalW) / 2;
+
+    chars.forEach((char, colIdx) => {
+      invaders.push({
+        x: startX + colIdx * (INV_W + INV_PAD_X),
+        y: INV_TOP + rowIdx * (INV_H + INV_PAD_Y),
+        alive: true,
+        label: char,
+        color,
+        todoIdx: todos.indexOf(todo),
+      });
+    });
+  });
+}
+
+function initInvader() {
+  stopInvader();
+  resizeInvaderCanvas();
+  generateInvaders();
+
+  cannon.x = invCanvasW() / 2;
+  bullets = [];
+  enemyBullets = [];
+  invItems = [];
+  rapidTimer  = 0;
+  shieldCount = 0;
+  invScore = 0;
+  invMoveDir = 1;
+  invMoveTimer = 0;
+  invMoveInterval = 60;
+  invEnemyShootTimer = 0;
+  invaderScoreValue.textContent = '0';
+  invGameState = 'playing';
+  invaderOverlay.classList.add('hidden');
+  invLoop();
+}
+
+function stopInvader() {
+  if (invAnimId) { cancelAnimationFrame(invAnimId); invAnimId = null; }
+  invGameState = 'idle';
+}
+
+function invLoop() {
+  if (invGameState !== 'playing') return;
+  invUpdate();
+  invDraw();
+  invAnimId = requestAnimationFrame(invLoop);
+}
+
+function invUpdate() {
+  const w = invCanvasW(), h = invCanvasH();
+  const cannonY = h - 50;
+
+  // アイテムタイマー更新
+  if (rapidTimer > 0) rapidTimer--;
+
+  // アイテム落下・取得
+  invItems = invItems.filter(item => {
+    item.y += INV_ITEM_SPEED;
+    // 砲台で取得
+    if (item.y + INV_ITEM_H / 2 >= cannonY - CANNON_H / 2 &&
+        item.y - INV_ITEM_H / 2 <= cannonY + CANNON_H / 2 &&
+        item.x + INV_ITEM_W / 2 >= cannon.x - CANNON_W / 2 &&
+        item.x - INV_ITEM_W / 2 <= cannon.x + CANNON_W / 2) {
+      applyInvItem(item.type);
+      return false;
+    }
+    return item.y < invCanvasH() + INV_ITEM_H;
+  });
+
+  // 敵の移動
+  invMoveTimer++;
+  if (invMoveTimer >= invMoveInterval) {
+    invMoveTimer = 0;
+    const aliveInvaders = invaders.filter(i => i.alive);
+    if (aliveInvaders.length === 0) return;
+
+    // 端に達したら下に移動して方向転換
+    const rightmost = Math.max(...aliveInvaders.map(i => i.x + INV_W));
+    const leftmost  = Math.min(...aliveInvaders.map(i => i.x));
+
+    if (invMoveDir === 1 && rightmost >= w - 4) {
+      invaders.forEach(i => { if (i.alive) i.y += INV_H / 2; });
+      invMoveDir = -1;
+      invMoveInterval = Math.max(15, invMoveInterval - 3);
+    } else if (invMoveDir === -1 && leftmost <= 4) {
+      invaders.forEach(i => { if (i.alive) i.y += INV_H / 2; });
+      invMoveDir = 1;
+      invMoveInterval = Math.max(15, invMoveInterval - 3);
+    } else {
+      invaders.forEach(i => { if (i.alive) i.x += invMoveDir * (INV_W * 0.4); });
+    }
+
+    // 敵が下まで来たらゲームオーバー
+    const lowestY = Math.max(...aliveInvaders.map(i => i.y + INV_H));
+    if (lowestY >= cannonY - CANNON_H) {
+      invGameState = 'gameover';
+      cancelAnimationFrame(invAnimId);
+      invDraw();
+      showInvaderOverlay('GAME OVER', invScore);
+      checkAndShowInvaderSaveDialog();
+      return;
+    }
+  }
+
+  // 敵の弾発射
+  invEnemyShootTimer++;
+  if (invEnemyShootTimer >= 90) {
+    invEnemyShootTimer = 0;
+    const aliveInvaders = invaders.filter(i => i.alive);
+    if (aliveInvaders.length > 0) {
+      const shooter = aliveInvaders[Math.floor(Math.random() * aliveInvaders.length)];
+      enemyBullets.push({ x: shooter.x + INV_W / 2, y: shooter.y + INV_H });
+    }
+  }
+
+  // プレイヤーの弾移動
+  bullets = bullets.filter(b => {
+    b.y -= BULLET_SPEED;
+    // 敵に当たったか
+    for (let i = 0; i < invaders.length; i++) {
+      const inv = invaders[i];
+      if (!inv.alive) continue;
+      if (b.x >= inv.x && b.x <= inv.x + INV_W &&
+          b.y >= inv.y && b.y <= inv.y + INV_H) {
+        inv.alive = false;
+        invScore += 10;
+        invaderScoreValue.textContent = invScore;
+
+        // アイテムドロップ
+        if (Math.random() < INV_ITEM_DROP_CHANCE) {
+          const types = Object.keys(INV_ITEM_TYPES);
+          const type  = types[Math.floor(Math.random() * types.length)];
+          invItems.push({ x: inv.x + INV_W / 2, y: inv.y + INV_H, type });
+        }
+        return false;
+      }
+    }
+    return b.y > 0;
+  });
+
+  // 敵の弾移動
+  enemyBullets = enemyBullets.filter(b => {
+    b.y += ENEMY_BULLET_SPEED;
+    // 砲台に当たったか
+    if (b.x >= cannon.x - CANNON_W / 2 && b.x <= cannon.x + CANNON_W / 2 &&
+        b.y >= cannonY - CANNON_H / 2  && b.y <= cannonY + CANNON_H / 2) {
+      // 盾があれば防ぐ
+      if (shieldCount > 0) {
+        shieldCount--;
+        return false;
+      }
+      invGameState = 'gameover';
+      cancelAnimationFrame(invAnimId);
+      invDraw();
+      showInvaderOverlay('GAME OVER', invScore);
+      checkAndShowInvaderSaveDialog();
+      return false;
+    }
+    return b.y < h;
+  });
+
+  // クリア判定
+  if (invaders.every(i => !i.alive)) {
+    invGameState = 'cleared';
+    cancelAnimationFrame(invAnimId);
+    invDraw();
+    showInvaderOverlay('🎉 CLEAR!', invScore);
+    checkAndShowInvaderSaveDialog();
+  }
+}
+
+function showInvaderOverlay(title, score) {
+  invaderOverlayTitle.textContent = title;
+  invaderOverlayScore.textContent = 'SCORE: ' + score;
+  invaderOverlayScore.classList.remove('hidden');
+  invaderOverlay.classList.remove('hidden');
+}
+
+invaderOverlayBtn.addEventListener('click', () => {
+  initInvader();
+});
+
+// アイテム効果適用
+function applyInvItem(type) {
+  if (type === 'RAPID') {
+    rapidTimer = 600; // 10秒
+  } else if (type === 'BOMB') {
+    // 画面上の全敵を爆破（範囲内）
+    const cx = cannon.x;
+    const bombRange = invCanvasW() * 0.4;
+    let count = 0;
+    invaders.forEach(inv => {
+      if (!inv.alive) return;
+      const dist = Math.abs((inv.x + INV_W / 2) - cx);
+      if (dist <= bombRange) {
+        inv.alive = false;
+        count++;
+      }
+    });
+    invScore += count * 10;
+    invaderScoreValue.textContent = invScore;
+  } else if (type === 'SHIELD') {
+    shieldCount++;
+  }
+}
+
+// INVADER用：全滅したtodoのインデックスを返す
+function getInvaderClearedTodoIndices() {
+  // todoIdxごとに全滅チェック
+  const todoMap = {};
+  invaders.forEach(inv => {
+    if (!todoMap[inv.todoIdx]) todoMap[inv.todoIdx] = { total: 0, alive: 0 };
+    todoMap[inv.todoIdx].total++;
+    if (inv.alive) todoMap[inv.todoIdx].alive++;
+  });
+  return Object.keys(todoMap)
+    .filter(idx => todoMap[idx].total > 0 && todoMap[idx].alive === 0)
+    .map(idx => parseInt(idx));
+}
+
+function checkAndShowInvaderSaveDialog() {
+  const cleared = getInvaderClearedTodoIndices();
+  if (cleared.length === 0) return;
+  pendingClearedIndices = cleared;
+  setTimeout(() => {
+    saveDialog.classList.remove('hidden');
+  }, 600);
+}
+
+function invDraw() {
+  const w = invCanvasW(), h = invCanvasH();
+  invaderCtx.clearRect(0, 0, w, h);
+
+  // 背景
+  invaderCtx.fillStyle = '#000';
+  invaderCtx.fillRect(0, 0, w, h);
+
+  // 敵（インベーダー）
+  invaders.forEach(inv => {
+    if (!inv.alive) return;
+    // 本体
+    roundRectCtx(invaderCtx, inv.x, inv.y, INV_W, INV_H, 4);
+    invaderCtx.fillStyle = inv.color + 'CC';
+    invaderCtx.fill();
+    invaderCtx.strokeStyle = inv.color;
+    invaderCtx.lineWidth = 1;
+    invaderCtx.stroke();
+    // 文字
+    invaderCtx.fillStyle = '#fff';
+    invaderCtx.font = 'bold 13px -apple-system, sans-serif';
+    invaderCtx.textAlign = 'center';
+    invaderCtx.textBaseline = 'middle';
+    invaderCtx.fillText(inv.label, inv.x + INV_W / 2, inv.y + INV_H / 2);
+  });
+
+  // プレイヤーの弾
+  bullets.forEach(b => {
+    invaderCtx.fillStyle = '#6C63FF';
+    invaderCtx.shadowColor = '#6C63FF';
+    invaderCtx.shadowBlur = 6;
+    invaderCtx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H, BULLET_W, BULLET_H);
+    invaderCtx.shadowBlur = 0;
+  });
+
+  // 敵の弾
+  enemyBullets.forEach(b => {
+    invaderCtx.fillStyle = '#FF6584';
+    invaderCtx.shadowColor = '#FF6584';
+    invaderCtx.shadowBlur = 6;
+    invaderCtx.fillRect(b.x - BULLET_W / 2, b.y, BULLET_W, BULLET_H);
+    invaderCtx.shadowBlur = 0;
+  });
+
+  // アイテム描画
+  invItems.forEach(item => {
+    const info = INV_ITEM_TYPES[item.type];
+    roundRectCtx(invaderCtx, item.x - INV_ITEM_W / 2, item.y - INV_ITEM_H / 2, INV_ITEM_W, INV_ITEM_H, 5);
+    invaderCtx.fillStyle = info.color;
+    invaderCtx.fill();
+    invaderCtx.fillStyle = '#fff';
+    invaderCtx.font = 'bold 11px -apple-system, sans-serif';
+    invaderCtx.textAlign = 'center';
+    invaderCtx.textBaseline = 'middle';
+    invaderCtx.fillText(info.label, item.x, item.y);
+  });
+
+  // 砲台
+  const cannonY = h - 50;
+  // 盾があれば砲台を緑に
+  const cg = invaderCtx.createLinearGradient(cannon.x - CANNON_W / 2, 0, cannon.x + CANNON_W / 2, 0);
+  if (shieldCount > 0) {
+    cg.addColorStop(0, '#34C759');
+    cg.addColorStop(1, '#00C7BE');
+  } else {
+    cg.addColorStop(0, '#6C63FF');
+    cg.addColorStop(1, '#FF6584');
+  }
+  roundRectCtx(invaderCtx, cannon.x - CANNON_W / 2, cannonY - CANNON_H / 2, CANNON_W, CANNON_H, CANNON_H / 2);
+  invaderCtx.fillStyle = cg;
+  invaderCtx.fill();
+
+  // 砲身（連射中はオレンジ）
+  invaderCtx.fillStyle = rapidTimer > 0 ? '#FF9500' : '#fff';
+  invaderCtx.fillRect(cannon.x - 3, cannonY - CANNON_H / 2 - 10, 6, 12);
+
+  // アクティブアイテム表示
+  let sx = 14;
+  const sy = h - 28;
+  if (rapidTimer > 0) {
+    invaderCtx.fillStyle = INV_ITEM_TYPES.RAPID.color;
+    invaderCtx.font = 'bold 11px -apple-system, sans-serif';
+    invaderCtx.textAlign = 'left';
+    invaderCtx.textBaseline = 'middle';
+    invaderCtx.fillText(`連射 ${Math.ceil(rapidTimer/60)}s`, sx, sy);
+    sx += 70;
+  }
+  if (shieldCount > 0) {
+    invaderCtx.fillStyle = INV_ITEM_TYPES.SHIELD.color;
+    invaderCtx.font = 'bold 11px -apple-system, sans-serif';
+    invaderCtx.textAlign = 'left';
+    invaderCtx.textBaseline = 'middle';
+    invaderCtx.fillText(`盾 ×${shieldCount}`, sx, sy);
+  }
+}
+
+function roundRectCtx(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// 砲台操作（タッチ & マウス）
+invaderCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect  = invaderCanvas.getBoundingClientRect();
+  const x     = touch.clientX - rect.left;
+  cannon.x = Math.min(Math.max(x, CANNON_W / 2), invCanvasW() - CANNON_W / 2);
+}, { passive: false });
+
+invaderCanvas.addEventListener('mousemove', (e) => {
+  const rect = invaderCanvas.getBoundingClientRect();
+  cannon.x = Math.min(Math.max(e.clientX - rect.left, CANNON_W / 2), invCanvasW() - CANNON_W / 2);
+});
+
+// タップで発射
+invaderCanvas.addEventListener('click', () => {
+  if (invGameState !== 'playing') return;
+  fireBullets();
+});
+
+invaderCanvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (invGameState !== 'playing') return;
+  fireBullets();
+}, { passive: false });
+
+function fireBullets() {
+  const baseY = invCanvasH() - 50 - CANNON_H / 2 - 10;
+  if (rapidTimer > 0) {
+    // 連射：3方向同時
+    if (bullets.length < 9) {
+      bullets.push({ x: cannon.x - 10, y: baseY });
+      bullets.push({ x: cannon.x,      y: baseY });
+      bullets.push({ x: cannon.x + 10, y: baseY });
+    }
+  } else {
+    if (bullets.length < 3) {
+      bullets.push({ x: cannon.x, y: baseY });
+    }
+  }
 }
 
 // ===========================
