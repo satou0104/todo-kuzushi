@@ -132,7 +132,7 @@ const ITEM_DROP_CHANCE = 0.15; // 15%の確率でドロップ
 const ITEM_TYPES = {
   TRIPLE: { label: '×3', color: '#FF6584', desc: '3分割' },
   PIERCE: { label: '貫通',  color: '#6C63FF', desc: '貫通'  },
-  BIG:    { label: '⬤',  color: '#FFCC00', desc: '巨大化' },
+  BIG:    { label: 'BIG',  color: '#FFCC00', desc: '巨大化' },
 };
 
 function currentBallR() {
@@ -561,7 +561,7 @@ function draw() {
     ctx.font = 'bold 11px -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`⬤ ${Math.ceil(bigTimer/60)}s`, statusX, statusY);
+    ctx.fillText(`BIG ${Math.ceil(bigTimer/60)}s`, statusX, statusY);
   }
 }
 
