@@ -1274,3 +1274,27 @@ saveNoBtn.addEventListener('click', () => {
 // ===== 初期化 =====
 // ===========================
 renderTodoList();
+
+// ===== AdMobバナー広告 =====
+async function initAdMob() {
+  try {
+    const { AdMob, BannerAdSize, BannerAdPosition } = window.Capacitor?.Plugins || {};
+    if (!AdMob) return; // ブラウザでは無視
+
+    await AdMob.initialize({
+      requestTrackingAuthorization: true,
+    });
+
+    await AdMob.showBanner({
+      adId: 'ca-app-pub-8707369701475326/8144015252',
+      adSize: BannerAdSize.BANNER,
+      position: BannerAdPosition.BOTTOM_CENTER,
+      margin: 0,
+      isTesting: false,
+    });
+  } catch (e) {
+    console.log('AdMob error:', e);
+  }
+}
+
+initAdMob();

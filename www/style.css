@@ -37,7 +37,7 @@ html, body {
   flex-direction: column;
   height: 100%;
   padding-top: var(--safe-top);
-  padding-bottom: var(--safe-bottom);
+  padding-bottom: calc(var(--safe-bottom) + 50px); /* バナー広告分 */
   background: var(--bg);
 }
 

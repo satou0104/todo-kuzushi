@@ -6,6 +6,8 @@
 	<string>ja</string>
 	<key>CFBundleDisplayName</key>
 	<string>todo崩し</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-8707369701475326~3439529665</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
