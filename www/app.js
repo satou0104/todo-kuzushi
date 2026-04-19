@@ -216,7 +216,7 @@ function switchMode(mode) {
   if (mode === 'todo') {
     todoMode.classList.remove('hidden');
     renderTodoList();
-  } else if (mode === 'break') {
+  } else if (mode === 'block') {
     gameMode.classList.remove('hidden');
     header.classList.add('game-header');
     initGame();
@@ -231,7 +231,7 @@ segBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     const mode = btn.dataset.mode;
     if (mode === currentMode) return;
-    if (currentMode === 'break') stopGame();
+    if (currentMode === 'block') stopGame();
     if (currentMode === 'invader') stopInvader();
     switchMode(mode);
   });
