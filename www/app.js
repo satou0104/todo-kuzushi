@@ -9,12 +9,10 @@ let todos = Array.from({ length: MAX_TODOS }, (_, i) => ({
 }));
 
 // ---- DOM 参照 ----
-const modeToggle   = document.getElementById('mode-toggle');
 const todoMode     = document.getElementById('todo-mode');
 const gameMode     = document.getElementById('game-mode');
 const todoList     = document.getElementById('todo-list');
 const header       = document.getElementById('header');
-const toggleLabelGame = document.getElementById('toggle-label-game');
 const canvas       = document.getElementById('game-canvas');
 const ctx          = canvas.getContext('2d');
 const gameOverlay  = document.getElementById('game-overlay');
@@ -795,8 +793,10 @@ function generateInvaders() {
   const BASE_PAD_X = INV_PAD_X;
   const BASE_PAD_Y = INV_PAD_Y;
 
-  // 全todoの最大文字数を基準にサイズ計算（BLOCKと同じ方式）
+  // 全todoの最大文字数を基準にサイズ計算
   const maxCharCount = Math.max(...activeTodos.map(t => [...t.text].length));
+  if (maxCharCount === 0) return;
+
   const availW = invCanvasW() - BASE_PAD_X * 2;
   let invW = Math.floor((availW - (maxCharCount - 1) * BASE_PAD_X) / maxCharCount);
   invW = Math.min(invW, BASE_INV_W);
@@ -809,9 +809,10 @@ function generateInvaders() {
 
   let currentY = INV_TOP;
 
-  activeTodos.forEach((todo, rowIdx) => {
+  activeTodos.forEach((todo) => {
     const chars = [...todo.text];
-    const color = BLOCK_COLORS[todos.indexOf(todo) % BLOCK_COLORS.length];
+    const todoIdx = todos.indexOf(todo);
+    const color = BLOCK_COLORS[todoIdx % BLOCK_COLORS.length];
     const totalW = chars.length * (invW + padX) - padX;
     const startX = (invCanvasW() - totalW) / 2;
 
@@ -824,7 +825,7 @@ function generateInvaders() {
         alive: true,
         label: char,
         color,
-        todoIdx: todos.indexOf(todo),
+        todoIdx,
         fontSize,
       });
     });
