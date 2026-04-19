@@ -1288,7 +1288,7 @@ async function initAdMob() {
     await AdMob.showBanner({
       adId: 'ca-app-pub-8707369701475326/8144015252',
       adSize: BannerAdSize.BANNER,
-      position: BannerAdPosition.BOTTOM_CENTER,
+      position: BannerAdPosition.TOP_CENTER,
       margin: 0,
       isTesting: false,
     });
