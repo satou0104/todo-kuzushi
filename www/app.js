@@ -2,11 +2,27 @@
 
 // ---- TODO データ ----
 const MAX_TODOS = 10;
-let todos = Array.from({ length: MAX_TODOS }, (_, i) => ({
-  id: i,
-  text: i === 0 ? '会社に電話する' : '',
-  completed: false,
-}));
+
+// localStorageから復元、なければデフォルト
+function loadTodos() {
+  try {
+    const saved = localStorage.getItem('todos');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return Array.from({ length: MAX_TODOS }, (_, i) => ({
+    id: i,
+    text: i === 0 ? '会社に電話する' : '',
+    completed: false,
+  }));
+}
+
+function saveTodos() {
+  try {
+    localStorage.setItem('todos', JSON.stringify(todos));
+  } catch(e) {}
+}
+
+let todos = loadTodos();
 
 // ---- DOM 参照 ----
 const todoMode     = document.getElementById('todo-mode');
@@ -46,6 +62,7 @@ function renderTodoList() {
     btn.setAttribute('aria-label', todo.completed ? '完了済み' : '未完了');
     btn.addEventListener('click', () => {
       todo.completed = !todo.completed;
+      saveTodos();
       renderTodoList();
     });
 
@@ -58,6 +75,9 @@ function renderTodoList() {
     input.maxLength = 15;
     input.addEventListener('input', (e) => {
       todo.text = e.target.value;
+    });
+    input.addEventListener('blur', () => {
+      saveTodos();
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') input.blur();
