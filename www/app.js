@@ -893,42 +893,39 @@ function invUpdate() {
 
   // 敵の移動（STOP中は止まる）
   if (stopTimer <= 0) {
-  invMoveTimer++;
-  if (invMoveTimer >= invMoveInterval) {
-    invMoveTimer = 0;
-    const aliveInvaders = invaders.filter(i => i.alive);
-    if (aliveInvaders.length === 0) return;
+    invMoveTimer++;
+    if (invMoveTimer >= invMoveInterval) {
+      invMoveTimer = 0;
+      const aliveInvaders = invaders.filter(i => i.alive);
+      if (aliveInvaders.length === 0) return;
 
-    // 端に達したら下に移動して方向転換
-    const rightmost = Math.max(...aliveInvaders.map(i => i.x + i.w));
-    const leftmost  = Math.min(...aliveInvaders.map(i => i.x));
+      const rightmost = Math.max(...aliveInvaders.map(i => i.x + i.w));
+      const leftmost  = Math.min(...aliveInvaders.map(i => i.x));
 
-    if (invMoveDir === 1 && rightmost >= w - 4) {
-      invaders.forEach(i => { if (i.alive) i.y += i.h / 2; });
-      invMoveDir = -1;
-      invMoveInterval = Math.max(15, invMoveInterval - 3);
-    } else if (invMoveDir === -1 && leftmost <= 4) {
-      invaders.forEach(i => { if (i.alive) i.y += i.h / 2; });
-      invMoveDir = 1;
-      invMoveInterval = Math.max(15, invMoveInterval - 3);
-    } else {
-      invaders.forEach(i => { if (i.alive) i.x += invMoveDir * (i.w * 0.4); });
+      if (invMoveDir === 1 && rightmost >= w - 4) {
+        invaders.forEach(i => { if (i.alive) i.y += i.h / 2; });
+        invMoveDir = -1;
+        invMoveInterval = Math.max(15, invMoveInterval - 3);
+      } else if (invMoveDir === -1 && leftmost <= 4) {
+        invaders.forEach(i => { if (i.alive) i.y += i.h / 2; });
+        invMoveDir = 1;
+        invMoveInterval = Math.max(15, invMoveInterval - 3);
+      } else {
+        invaders.forEach(i => { if (i.alive) i.x += invMoveDir * (i.w * 0.4); });
+      }
+
+      const lowestY = Math.max(...aliveInvaders.map(i => i.y + i.h));
+      if (lowestY >= cannonY - CANNON_H) {
+        invGameState = 'gameover';
+        cancelAnimationFrame(invAnimId);
+        invDraw();
+        showInvaderOverlay('GAME OVER', invScore);
+        checkAndShowInvaderSaveDialog();
+        return;
+      }
     }
 
-    // 敵が下まで来たらゲームオーバー
-    const lowestY = Math.max(...aliveInvaders.map(i => i.y + i.h));
-    if (lowestY >= cannonY - CANNON_H) {
-      invGameState = 'gameover';
-      cancelAnimationFrame(invAnimId);
-      invDraw();
-      showInvaderOverlay('GAME OVER', invScore);
-      checkAndShowInvaderSaveDialog();
-      return;
-    }
-  } // end stopTimer <= 0 (move)
-
-  // 敵の弾発射（STOP中は撃たない）
-  if (stopTimer <= 0) {
+    // 敵の弾発射（STOP中は撃たない）
     invEnemyShootTimer++;
     if (invEnemyShootTimer >= 90) {
       invEnemyShootTimer = 0;
@@ -938,7 +935,7 @@ function invUpdate() {
         enemyBullets.push({ x: shooter.x + shooter.w / 2, y: shooter.y + shooter.h });
       }
     }
-  }
+  } // end stopTimer <= 0
 
   // プレイヤーの弾移動
   bullets = bullets.filter(b => {
