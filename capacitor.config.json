@@ -6,6 +6,8 @@
     "androidScheme": "https"
   },
   "ios": {
-    "backgroundColor": "#0F0F1A"
+    "backgroundColor": "#0F0F1A",
+    "scrollAssist": false,
+    "keyboardResize": "none"
   }
 }
