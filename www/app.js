@@ -790,23 +790,46 @@ function generateInvaders() {
   const activeTodos = todos.filter(t => t.text.trim() && !t.completed);
   if (activeTodos.length === 0) return;
 
-  // 最大INV_COLS列、todoごとに1行
+  const BASE_INV_W = INV_W;
+  const BASE_INV_H = INV_H;
+  const BASE_PAD_X = INV_PAD_X;
+  const BASE_PAD_Y = INV_PAD_Y;
+
+  // 全todoの最大文字数を基準にサイズ計算（BLOCKと同じ方式）
+  const maxCharCount = Math.max(...activeTodos.map(t => [...t.text].length));
+  const availW = invCanvasW() - BASE_PAD_X * 2;
+  let invW = Math.floor((availW - (maxCharCount - 1) * BASE_PAD_X) / maxCharCount);
+  invW = Math.min(invW, BASE_INV_W);
+  invW = Math.max(invW, 14);
+  const ratio = invW / BASE_INV_W;
+  const invH  = Math.max(Math.floor(BASE_INV_H * ratio), 10);
+  const padX  = BASE_PAD_X;
+  const padY  = BASE_PAD_Y;
+  const fontSize = Math.max(Math.floor(invH * 0.65), 8);
+
+  let currentY = INV_TOP;
+
   activeTodos.forEach((todo, rowIdx) => {
-    const chars = [...todo.text].slice(0, INV_COLS);
+    const chars = [...todo.text];
     const color = BLOCK_COLORS[todos.indexOf(todo) % BLOCK_COLORS.length];
-    const totalW = chars.length * (INV_W + INV_PAD_X) - INV_PAD_X;
+    const totalW = chars.length * (invW + padX) - padX;
     const startX = (invCanvasW() - totalW) / 2;
 
     chars.forEach((char, colIdx) => {
       invaders.push({
-        x: startX + colIdx * (INV_W + INV_PAD_X),
-        y: INV_TOP + rowIdx * (INV_H + INV_PAD_Y),
+        x: startX + colIdx * (invW + padX),
+        y: currentY,
+        w: invW,
+        h: invH,
         alive: true,
         label: char,
         color,
         todoIdx: todos.indexOf(todo),
+        fontSize,
       });
     });
+
+    currentY += invH + padY;
   });
 }
 
@@ -876,23 +899,23 @@ function invUpdate() {
     if (aliveInvaders.length === 0) return;
 
     // 端に達したら下に移動して方向転換
-    const rightmost = Math.max(...aliveInvaders.map(i => i.x + INV_W));
+    const rightmost = Math.max(...aliveInvaders.map(i => i.x + i.w));
     const leftmost  = Math.min(...aliveInvaders.map(i => i.x));
 
     if (invMoveDir === 1 && rightmost >= w - 4) {
-      invaders.forEach(i => { if (i.alive) i.y += INV_H / 2; });
+      invaders.forEach(i => { if (i.alive) i.y += i.h / 2; });
       invMoveDir = -1;
       invMoveInterval = Math.max(15, invMoveInterval - 3);
     } else if (invMoveDir === -1 && leftmost <= 4) {
-      invaders.forEach(i => { if (i.alive) i.y += INV_H / 2; });
+      invaders.forEach(i => { if (i.alive) i.y += i.h / 2; });
       invMoveDir = 1;
       invMoveInterval = Math.max(15, invMoveInterval - 3);
     } else {
-      invaders.forEach(i => { if (i.alive) i.x += invMoveDir * (INV_W * 0.4); });
+      invaders.forEach(i => { if (i.alive) i.x += invMoveDir * (i.w * 0.4); });
     }
 
     // 敵が下まで来たらゲームオーバー
-    const lowestY = Math.max(...aliveInvaders.map(i => i.y + INV_H));
+    const lowestY = Math.max(...aliveInvaders.map(i => i.y + i.h));
     if (lowestY >= cannonY - CANNON_H) {
       invGameState = 'gameover';
       cancelAnimationFrame(invAnimId);
@@ -911,7 +934,7 @@ function invUpdate() {
       const aliveInvaders = invaders.filter(i => i.alive);
       if (aliveInvaders.length > 0) {
         const shooter = aliveInvaders[Math.floor(Math.random() * aliveInvaders.length)];
-        enemyBullets.push({ x: shooter.x + INV_W / 2, y: shooter.y + INV_H });
+        enemyBullets.push({ x: shooter.x + shooter.w / 2, y: shooter.y + shooter.h });
       }
     }
   }
@@ -923,8 +946,8 @@ function invUpdate() {
     for (let i = 0; i < invaders.length; i++) {
       const inv = invaders[i];
       if (!inv.alive) continue;
-      if (b.x >= inv.x && b.x <= inv.x + INV_W &&
-          b.y >= inv.y && b.y <= inv.y + INV_H) {
+      if (b.x >= inv.x && b.x <= inv.x + inv.w &&
+          b.y >= inv.y && b.y <= inv.y + inv.h) {
         inv.alive = false;
         invScore += 10;
         invaderScoreValue.textContent = invScore;
@@ -933,7 +956,7 @@ function invUpdate() {
         if (Math.random() < INV_ITEM_DROP_CHANCE) {
           const types = Object.keys(INV_ITEM_TYPES);
           const type  = types[Math.floor(Math.random() * types.length)];
-          invItems.push({ x: inv.x + INV_W / 2, y: inv.y + INV_H, type });
+          invItems.push({ x: inv.x + inv.w / 2, y: inv.y + inv.h, type });
         }
         return false;
       }
@@ -1029,7 +1052,7 @@ function invDraw() {
   invaders.forEach(inv => {
     if (!inv.alive) return;
     // 本体
-    roundRectCtx(invaderCtx, inv.x, inv.y, INV_W, INV_H, 4);
+    roundRectCtx(invaderCtx, inv.x, inv.y, inv.w, inv.h, 4);
     invaderCtx.fillStyle = stopTimer > 0 ? '#007AFF99' : inv.color + 'CC';
     invaderCtx.fill();
     invaderCtx.strokeStyle = stopTimer > 0 ? '#007AFF' : inv.color;
@@ -1037,10 +1060,10 @@ function invDraw() {
     invaderCtx.stroke();
     // 文字
     invaderCtx.fillStyle = '#fff';
-    invaderCtx.font = 'bold 13px -apple-system, sans-serif';
+    invaderCtx.font = `bold ${inv.fontSize}px -apple-system, sans-serif`;
     invaderCtx.textAlign = 'center';
     invaderCtx.textBaseline = 'middle';
-    invaderCtx.fillText(inv.label, inv.x + INV_W / 2, inv.y + INV_H / 2);
+    invaderCtx.fillText(inv.label, inv.x + inv.w / 2, inv.y + inv.h / 2);
   });
 
   // プレイヤーの弾
