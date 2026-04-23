@@ -230,7 +230,7 @@ html, body {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, #6C63FF, #FF6584);
+  background: var(--item-accent, #6C63FF);
   border-radius: 3px 0 0 3px;
   opacity: 0;
   transition: opacity 0.2s;
@@ -241,7 +241,6 @@ html, body {
 }
 
 .todo-item.is-completed {
-  background: rgba(255,255,255,0.02);
   border-color: rgba(255,255,255,0.05);
 }
 

@@ -51,6 +51,18 @@ function renderTodoList() {
     li.className = 'todo-item' + (todo.completed ? ' is-completed' : '');
     li.dataset.index = index;
 
+    // ブロックカラーをTODOアイテムの背景に薄く適用
+    const color = BLOCK_COLORS[index % BLOCK_COLORS.length];
+    if (todo.completed) {
+      li.style.background = `${color}18`;
+      li.style.borderColor = `${color}30`;
+    } else {
+      li.style.background = `${color}28`;
+      li.style.borderColor = `${color}60`;
+    }
+    // 左アクセントラインの色もブロックカラーに合わせる
+    li.style.setProperty('--item-accent', color);
+
     // ドラッグハンドル
     const handle = document.createElement('span');
     handle.className = 'drag-handle';
