@@ -11,7 +11,7 @@ function loadTodos() {
   } catch(e) {}
   return Array.from({ length: MAX_TODOS }, (_, i) => ({
     id: i,
-    text: i === 0 ? '会社に電話する' : '',
+    text: i === 0 ? 'タスクを入力する' : '',
     completed: false,
   }));
 }
