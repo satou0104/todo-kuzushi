@@ -352,9 +352,22 @@ function generateBlocks() {
 
   let currentY = BLOCK_TOP; // 積み上げ方式
 
-  todos.forEach((todo, todoIdx) => {
+  // タスクが1件もない場合はサンクスメッセージを表示
+  const activeTodosForBlock = todos.filter(t => t.text.trim() && !t.completed);
+  const thanksTodos = activeTodosForBlock.length === 0
+    ? [
+        { text: 'ダウンロード', completed: false },
+        { text: 'してくれて',   completed: false },
+        { text: 'ありがとう',   completed: false },
+      ]
+    : null;
+  const todoSource = thanksTodos
+    ? thanksTodos.map((t, i) => ({ ...t, _idx: i }))
+    : todos.map((t, i) => ({ ...t, _idx: i }));
+
+  todoSource.forEach((todo, todoIdx) => {
     if (!todo.text.trim() || todo.completed) return;
-    const color = BLOCK_COLORS[todoIdx % BLOCK_COLORS.length];
+    const color = BLOCK_COLORS[todo._idx % BLOCK_COLORS.length];
     const charCount = [...todo.text].length;
 
     const availW = canvasW() - BASE_CHAR_PAD * 2;
@@ -818,7 +831,15 @@ function resizeInvaderCanvas() {
 function generateInvaders() {
   invaders = [];
   const activeTodos = todos.filter(t => t.text.trim() && !t.completed);
-  if (activeTodos.length === 0) return;
+
+  // タスクが1件もない場合はサンクスメッセージを表示
+  const todoSource = activeTodos.length === 0
+    ? [
+        { text: 'ダウンロード', completed: false, _idx: 0 },
+        { text: 'してくれて',   completed: false, _idx: 1 },
+        { text: 'ありがとう',   completed: false, _idx: 2 },
+      ]
+    : activeTodos.map(t => ({ ...t, _idx: todos.indexOf(t) }));
 
   const BASE_INV_W = INV_W;
   const BASE_INV_H = INV_H;
@@ -826,7 +847,7 @@ function generateInvaders() {
   const BASE_PAD_Y = INV_PAD_Y;
 
   // 全todoの最大文字数を基準にサイズ計算
-  const maxCharCount = Math.max(...activeTodos.map(t => [...t.text].length));
+  const maxCharCount = Math.max(...todoSource.map(t => [...t.text].length));
   if (maxCharCount === 0) return;
 
   const availW = invCanvasW() - BASE_PAD_X * 2;
@@ -841,10 +862,9 @@ function generateInvaders() {
 
   let currentY = INV_TOP;
 
-  activeTodos.forEach((todo) => {
+  todoSource.forEach((todo) => {
     const chars = [...todo.text];
-    const todoIdx = todos.indexOf(todo);
-    const color = BLOCK_COLORS[todoIdx % BLOCK_COLORS.length];
+    const color = BLOCK_COLORS[todo._idx % BLOCK_COLORS.length];
     const totalW = chars.length * (invW + padX) - padX;
     const startX = (invCanvasW() - totalW) / 2;
 
@@ -857,7 +877,7 @@ function generateInvaders() {
         alive: true,
         label: char,
         color,
-        todoIdx,
+        todoIdx: todo._idx,
         fontSize,
       });
     });
